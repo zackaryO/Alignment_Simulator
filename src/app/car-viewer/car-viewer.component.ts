@@ -77,8 +77,8 @@ export class CarViewerComponent implements OnInit {
 
   loadCarModel() {
     const loader = new GLTFLoader();
-    const modelPath = '../Alignment_Simulator/assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-    const suspensionModelPath = '../Alignment_Simulator/assets/rigged_suspension/scene.gltf';
+    const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
+    const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
     loader.load(modelPath, (gltf) => {
       const carModel = gltf.scene;
       this.scene.add(carModel);
