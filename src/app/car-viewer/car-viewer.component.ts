@@ -35,7 +35,7 @@ export class CarViewerComponent implements OnInit {
   statusMessage: string = '';
   orbitControls!: OrbitControls;
   modelLoaded: boolean = false;
-  fROffsetTOE = 11;
+  fROffsetTOE = 9;
   fROffsetCAMBER = 2;
   fROffsetXRotation = 30; // 10 degrees positive caster
   sAI = 10;
@@ -81,11 +81,11 @@ export class CarViewerComponent implements OnInit {
 
   loadCarModel() {
     const loader = new GLTFLoader();
-// const modelPath = '/Alignment_Simulator/assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-// const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene.gltf';
+const modelPath = '/Alignment_Simulator/assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
+const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene.gltf';
 // for local host
-const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
+// const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
+// const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
 
     loader.load(modelPath, (gltf) => {
       const carModel = gltf.scene;
@@ -240,7 +240,7 @@ const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
     // Update wheel rotation and labels
     this.updateWheelRotation();
     this.changeDriver();
-    // this.updateStatus();
+    this.updateStatus();
   }
 
 addAxisLines(wheel: THREE.Object3D, index: number) {
@@ -312,7 +312,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     this.toeAngle = angle;
     this.updateWheelRotation();
     this.changeDriver();
-    // this.updateStatus();
+    this.updateStatus();
   }
 
   onDriverToeChange(event: any) {
@@ -329,7 +329,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     this.turnAngle = angle;
     this.changeDriver();
     this.updateTurnAngle();
-      //  this.updateStatus();
+       this.updateStatus();
   }
 
   onDriverCamberChange(event: any) {
@@ -379,6 +379,22 @@ changeDriver() {
             wheel.rotation.y = radians(this.camberAngle) + totalDynamicCamber + manualOffsetY;
             wheel.rotation.z = toeAngleR + manualOffsetZ;
         }
+        if (wheel.name === this.driverWheelOuter) {
+        manualOffsetZ = this.driverWheelOuterOff * Math.PI / 180;
+        wheel.rotation.x = -toeAngleR;
+        if(toeAngleD > 0){
+          wheel.rotation.z = -Math.abs((toeAngleD * 0.4)) * Math.PI / 180 + manualOffsetZ;
+        }
+        else{
+        wheel.rotation.z = Math.abs((toeAngleD * 0.4)) * Math.PI / 180 + manualOffsetZ;
+        }
+
+      }
+
+      if (wheel.name === this.driverWheelOuterCAM) {
+        manualOffsetZ = this.driverWheelOuterOffCam * Math.PI / 180;
+        wheel.rotation.z = radians(this.camberAngle) + manualOffsetZ;
+      }
     });
     this.updateStatus();
     
@@ -495,17 +511,24 @@ if ((this.driverCamberAngle <= this.maxCamSpec) && (this.driverCamberAngle >= th
 }
 
 //need to give toe a range
-if ((this.toeAngle === 0) && (this.driverCamberAngle <= this.maxCamSpec) && (this.driverCamberAngle >= this.minCamSpec) && (this.toeAngle === 0) 
-  && (this.driverToeAngle === 0)) {
-    // tireWearStatus = '<span class="normal-wear">Normal tire wear</span>';
-    pullDirectionStatus = '<span class="no pull">No pull</span>';
-}
+  if ((this.toeAngle === 0) && (this.driverCamberAngle <= this.maxCamSpec) && (this.driverCamberAngle >= this.minCamSpec) && (this.toeAngle === 0) 
+    && (this.driverToeAngle === 0)) 
+    {
+        // tireWearStatus = '<span class="normal-wear">Normal tire wear</span>';
+        pullDirectionStatus = '<span class="no pull">No pull</span>';
+    }
 
-    this.statusMessage = `
-      <h1>Toe</h1>${toeStatus}
-      <h1>Tire Wear</h1>${tireWearStatus}
-      <h1>Pull Direction</h1>${pullDirectionStatus}
-    `;
+this.statusMessage = `
+    <div class="status-item">
+        <h1>Toe</h1><span>${toeStatus}</span>
+    </div>
+    <div class="status-item">
+        <h1>Tire Wear</h1><span>${tireWearStatus}</span>
+    </div>
+    <div class="status-item">
+        <h1>Pull Direction</h1><span>${pullDirectionStatus}</span>
+    </div>
+`;
   }
 
   updateLabel(label: THREE.Sprite, wheel: THREE.Object3D, nodeName: string) {

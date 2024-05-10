@@ -13,10 +13,17 @@
     margin: 10px;
     z-index: 10;
     position: absolute;
+    top: 0;
+    left: 0;
+    right: 0; /* Stretch across the top */
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around; /* Evenly space content across the top */
+    font-size: 14px; /* Adjust font size */
 }
 
 .renderer-container {
-    flex-grow: 1; /* Allow this container to grow to fill space */
+    flex-grow: 1; /* Allow this container to grow to fill available space */
     margin: 5px;
     background-color: #eeeeee;
     overflow: hidden; /* Hide any overflow */
@@ -26,15 +33,14 @@
     background-color: #f8f9fa;
     padding: 10px;
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 10px;
-    border-top: 1px solid #dee2e6; /* A light border for the top of the control section */
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* More responsive grid */
+    gap: 5px; /* Reduced gap */
+    border-top: 1px solid #dee2e6;
 }
 
-input[type="range"] {
-    width: calc(100% - 20px); /* Full width minus padding */
-    margin: 10px;
-    cursor: pointer;
+input[type="range"], button {
+    width: 100%; /* Ensure full width usage */
+    margin: 5px 0;
 }
 
 button {
@@ -43,8 +49,8 @@ button {
     color: white;
     border: none;
     border-radius: 5px;
-    padding: 10px;
-    font-size: 16px;
+    padding: 8px; /* Reduce padding slightly */
+    font-size: 14px; /* Adjust font size for buttons */
     transition: background-color 0.3s ease;
 }
 
@@ -60,4 +66,15 @@ label {
 
 span {
     color: #555;
+}
+
+@media (max-width: 600px) {
+    .status-box {
+        flex-direction: column; /* Stack the status items vertically on smaller screens */
+    }
+
+    .status-item {
+        justify-content: center; /* Center the items within each status box */
+        margin-right: 0; /* Remove right margin on smaller screens */
+    }
 }
