@@ -1,0 +1,11 @@
+Model Information:
+* title:	Rigged Suspension
+* source:	https://sketchfab.com/3d-models/rigged-suspension-61b52b93722a4d21adcff024d7829ff9
+* author:	kainar1k (https://sketchfab.com/kainar1k)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Rigged Suspension" (https://sketchfab.com/3d-models/rigged-suspension-61b52b93722a4d21adcff024d7829ff9) by kainar1k (https://sketchfab.com/kainar1k) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

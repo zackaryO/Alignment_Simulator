@@ -1,0 +1,32 @@
+<div class="container">
+<div class="status-box" *ngIf="statusMessage" [innerHTML]="statusMessage"></div>
+
+    <div #rendererContainer class="renderer-container"></div>
+    <div class="controls">
+        <div>
+            <label for="camber">Cross Camber (both sides equal): {{ formatDegrees(camberAngle) }}</label>
+            <input type="range" id="camber" min="-30" max="30" step="0.1" [disabled]="!modelLoaded" [(ngModel)]="camberAngle"
+                (input)="onCamberChange($event)">
+        </div>
+        <div>
+            <label for="toe">Total Toe: {{ formatDegrees(-toeAngle) }}</label>
+            <input type="range" id="toe" min="-30" max="30" step="0.1" [disabled]="!modelLoaded" [(ngModel)]="toeAngle" (input)="onToeChange($event)">
+        </div>
+        <div>
+            <label for="turn">Turning Angle: {{ formatDegrees(turnAngle) }}</label>
+            <input type="range" id="turn" min="-30" max="30" step="0.1" [disabled]="!modelLoaded" [(ngModel)]="turnAngle"
+                (input)="onTurnAngleChange($event)">
+        </div>
+        <div>
+            <label for="driverCamber">Driver Camber Adjust: {{ formatDegrees(driverCamberAngle) }}</label>
+            <input type="range" id="driverCamber" min="-30" max="30" step="0.1" [disabled]="!modelLoaded" [(ngModel)]="driverCamberAngle"
+                (input)="onDriverCamberChange($event)">
+        </div>
+        <div>
+            <label for="driverToe">Driver Toe Adjust: {{ formatDegrees(driverToeAngle) }}</label>
+            <input type="range" id="driverToe" min="-30" max="30" step="0.1" [disabled]="!modelLoaded" [(ngModel)]="driverToeAngle"
+                (input)="onDriverToeChange($event)">
+        <button (click)="toggleView()">Toggle View</button>
+        <button (click)="resetAngles()">Reset to Zero</button>
+    </div>
+</div>

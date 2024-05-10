@@ -1,0 +1,63 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* Use the full height of the viewport */
+    overflow: hidden; /* Prevents scrolling */
+}
+
+.status-box {
+    color: white;
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 8px;
+    border-radius: 8px;
+    margin: 10px;
+    z-index: 10;
+    position: absolute;
+}
+
+.renderer-container {
+    flex-grow: 1; /* Allow this container to grow to fill space */
+    margin: 5px;
+    background-color: #eeeeee;
+    overflow: hidden; /* Hide any overflow */
+}
+
+.controls {
+    background-color: #f8f9fa;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 10px;
+    border-top: 1px solid #dee2e6; /* A light border for the top of the control section */
+}
+
+input[type="range"] {
+    width: calc(100% - 20px); /* Full width minus padding */
+    margin: 10px;
+    cursor: pointer;
+}
+
+button {
+    cursor: pointer;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 10px;
+    font-size: 16px;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #0056b3;
+}
+
+label {
+    margin: 5px;
+    font-weight: bold;
+    color: #333;
+}
+
+span {
+    color: #555;
+}
