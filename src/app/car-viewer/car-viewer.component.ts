@@ -38,9 +38,10 @@ export class CarViewerComponent implements OnInit {
   fROffsetTOE = 11;
   fROffsetCAMBER = 2;
   fROffsetXRotation = 30; // 10 degrees positive caster
+  sAI = 10;
   fLOffsetTOE = -11;
   fLOffsetCAMBER = 0;
-  fLOffsetXRotation = -50; // 10 degrees positive caster
+  fLOffsetXRotation = -50; // (-50) = 10 degrees positive caster IMPORTANT, if you change this value, you must compensate     camberLine.rotation.x = Math.PI / 2;  // Rotate to align vertically
   driverWheelOuterOff = 90;
   driverWheelOuterOffCam = -90;
   driverWheelOuterOffCast = -12;
@@ -80,11 +81,11 @@ export class CarViewerComponent implements OnInit {
 
   loadCarModel() {
     const loader = new GLTFLoader();
-const modelPath = '/Alignment_Simulator/assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene.gltf';
+// const modelPath = '/Alignment_Simulator/assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
+// const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene.gltf';
 // for local host
-// const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-// const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
+const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
+const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
 
     loader.load(modelPath, (gltf) => {
       const carModel = gltf.scene;
@@ -209,10 +210,10 @@ const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene
           });
 
           // Create labels
-          const labelPosition = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld).add(new THREE.Vector3(2, 2, 0));
-          const label = this.createLabel(node.name, 'X: 0°, Y: 0°, Z: 0°', labelPosition);
-          node.userData['label'] = label;
-          this.scene.add(label);
+          // const labelPosition = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld).add(new THREE.Vector3(2, 2, 0));
+          // const label = this.createLabel(node.name, 'X: 0°, Y: 0°, Z: 0°', labelPosition);
+          // node.userData['label'] = label;
+          // this.scene.add(label);
         }
         }
 
@@ -328,6 +329,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     this.turnAngle = angle;
     this.changeDriver();
     this.updateTurnAngle();
+       this.updateStatus();
   }
 
   onDriverCamberChange(event: any) {
@@ -339,85 +341,122 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
   }
 
  
-  changeDriver() {
-      let manualOffsetZ = 0;
-      let manualOffsetY = 0;
-      let toeAngle = 0;
+changeDriver() {
+    let manualOffsetZ = 0;
+    let manualOffsetY = 0;
+    let toeAngleD = 0;
+
     // Check if each specific angle has been updated
     if (this.driverToeAngle !== this.lastDriverToeAngle) {
-      toeAngle = this.driverToeAngle;
-      this.lastDriverToeAngle = this.driverToeAngle; // Update last known value
+      toeAngleD = this.driverToeAngle;
+      this.lastDriverToeAngle = this.driverToeAngle;
     } else if (this.turnAngle !== this.lastTurnAngle) {
-      toeAngle = this.turnAngle;
-      this.lastTurnAngle = this.turnAngle; // Update last known value
+      toeAngleD = this.turnAngle;
+      this.lastTurnAngle = this.turnAngle;
     } else if (this.toeAngle !== this.lastToeAngle) {
-      toeAngle = this.toeAngle;
-      this.lastToeAngle = this.toeAngle; // Update last known value
+      toeAngleD = this.toeAngle;
+      this.lastToeAngle = this.toeAngle;
     }
+
+    const radians = (degrees: number) => degrees * Math.PI / 180;
+
+    let toeAngleR = radians(toeAngleD);
+    let SAI = radians(this.sAI); // Example SAI angle in degrees, adjust as necessary
+    let caster = radians(this.fLOffsetXRotation);
+
+    // Calculate camber gain from SAI and toe
+    let camberGainFromSAI = Math.sin(SAI) * Math.tan(toeAngleR);
+    // Calculate additional camber effect from caster (simplified model, assumes small angles)
+    let camberGainFromCaster = Math.sin(caster) * Math.sin(toeAngleR);
+    // Total dynamic camber adjustment
+    let totalDynamicCamber = (camberGainFromSAI + camberGainFromCaster) * (toeAngleD >= 0 ? 1 : -1);
+
     this.wheels.forEach((wheel, index) => {
       if (wheel.name === this.driverWheel) {
-        manualOffsetZ = this.fLOffsetTOE * Math.PI / 180; // Example adjustment
-        manualOffsetY = this.fLOffsetCAMBER * Math.PI / 180; // Example adjustment
-        wheel.rotation.y = (this.camberAngle + Math.abs((-this.toeAngle*0.6))) * Math.PI / 180 + manualOffsetY; // Adjusting for camber and manual offset
-        wheel.rotation.z = toeAngle * Math.PI / 180 + manualOffsetZ;   // Adjusting for toe and manual offset
-      }
+        manualOffsetZ = this.fLOffsetTOE * Math.PI / 180; // Zero-toe offset
+        manualOffsetY = radians(this.fLOffsetCAMBER); // Base static camber offset
 
+        // Apply the calculated camber and toe angles
+        wheel.rotation.y = radians(this.camberAngle) + totalDynamicCamber + manualOffsetY;
+        wheel.rotation.z = toeAngleR + manualOffsetZ;
+      }
 
       if (wheel.name === this.driverWheelOuter) {
         manualOffsetZ = this.driverWheelOuterOff * Math.PI / 180; 
-        wheel.rotation.x = -toeAngle * Math.PI / 180; 
-        wheel.rotation.z =  -Math.abs((-toeAngle*0.4)) * Math.PI / 180 + manualOffsetZ;
+        wheel.rotation.x = -toeAngleR; 
+        wheel.rotation.z = -Math.abs((-toeAngleD*0.4)) * Math.PI / 180 + manualOffsetZ;
       }
 
       if (wheel.name === this.driverWheelOuterCAM) {
         manualOffsetZ = this.driverWheelOuterOffCam * Math.PI / 180; // Example adjustment
-        wheel.rotation.z = -this.camberAngle * Math.PI / 180 + manualOffsetZ;
+        wheel.rotation.z = -radians(this.camberAngle) + manualOffsetZ;
       }
-
     });
     this.updateStatus();
     
     this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
-  }
+}
 
-  // Total Toe and Cross Camber
-  updateWheelRotation() {
-    this.wheels.forEach((wheel, index) => {
-      // Preserve the manually set offset
-      let manualOffsetZ = 0;
-      let manualOffsetY = 0;
-      if (wheel.name === this.passengerWheel) {
-        manualOffsetZ = this.fROffsetTOE * Math.PI / 180; // Example adjustment
-        manualOffsetY = this.fROffsetCAMBER * Math.PI / 180; // Example adjustment
-        wheel.rotation.y = (-this.camberAngle + -Math.abs((-this.toeAngle*0.6))) * Math.PI / 180 + manualOffsetY; // Inverse camber angle for passenger wheel
-        wheel.rotation.z = this.toeAngle * Math.PI / 180 + manualOffsetZ;   // Adjusting for toe and manual offset
-      } 
-         this.updateLabelVals(wheel);
-    });
 
-    this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
-  }
+  // deals with passenger side for total toe, the passenger side toe move opposite of the driver side toe
+updateWheelRotation() {
+  const radians = (degrees: number) => degrees * Math.PI / 180;
+  let SAI = radians(this.sAI);  // Same Steering Axis Inclination for both sides
+  let caster = radians(this.fROffsetXRotation);  // Different caster offset for passenger
 
-  // Total Toe and Cross Camber
-  updateTurnAngle() {
-    this.wheels.forEach((wheel, index) => {
-      // Preserve the manually set offset
-      let manualOffsetZ = 0;
-      let manualOffsetY = 0;
-      if (wheel.name === this.passengerWheel) {
-        manualOffsetZ = this.fROffsetTOE * Math.PI / 180; // Example adjustment
-        manualOffsetY = this.fROffsetCAMBER * Math.PI / 180; // Example adjustment
-        wheel.rotation.y = (-this.camberAngle + -Math.abs((-this.turnAngle*0.6))) * Math.PI / 180 + manualOffsetY; // Inverse camber angle for passenger wheel
-        wheel.rotation.z = -this.turnAngle * Math.PI / 180 + manualOffsetZ;
-      } 
+  this.wheels.forEach((wheel, index) => {
+    if (wheel.name === this.passengerWheel) {
+      let manualOffsetZ = this.fROffsetTOE * Math.PI / 180; // Example adjustment
+      let manualOffsetY = radians(this.fROffsetCAMBER); // Example adjustment
+      
+      let toeAngleR = -radians(this.toeAngle);  // Negative because toe moves oppositely
+      // Calculate camber gain from SAI and toe, note the toe direction effect is reversed
+      let camberGainFromSAI = Math.sin(SAI) * Math.tan(toeAngleR);
+      let camberGainFromCaster = Math.sin(caster) * Math.sin(toeAngleR);
+      let totalDynamicCamber = camberGainFromSAI + camberGainFromCaster;
 
-      // if (wheel.name === this.driverWheelOuterCAM) {
-      //   manualOffsetZ = this.driverWheelOuterOffCam * Math.PI / 180; // Example adjustment
-      //   wheel.rotation.z = -this.camberAngle * Math.PI / 180 + manualOffsetZ;
-      // }
+      // Apply the calculated camber and toe angles
+      wheel.rotation.y = radians(-this.camberAngle) + totalDynamicCamber + manualOffsetY; // Inverse camber angle for passenger wheel
+      wheel.rotation.z = this.toeAngle * Math.PI / 180 + manualOffsetZ;   // Adjusting for toe and manual offset
+    } 
+    this.updateLabelVals(wheel);
+  });
 
+  this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
+}
+
+
+  // deals with passenger side for total toe, the passenger side toe move WITH the driver side toe
+updateTurnAngle() {
+  const radians = (degrees: number) => degrees * Math.PI / 180;
+  let SAI = radians(this.sAI);  // Same Steering Axis Inclination for both sides
+  let caster = radians(this.fROffsetXRotation);  // Different caster offset for passenger
+
+  this.wheels.forEach((wheel, index) => {
+    if (wheel.name === this.passengerWheel) {
+      let manualOffsetZ = this.fROffsetTOE * Math.PI / 180; // Example adjustment
+      let manualOffsetY = radians(this.fROffsetCAMBER); // Example adjustment
+      
+      let toeAngleR = radians(this.turnAngle);
+      // Calculate camber gain from SAI and toe
+      let camberGainFromSAI = Math.sin(SAI) * Math.tan(toeAngleR);
+      let camberGainFromCaster = Math.sin(caster) * Math.sin(toeAngleR);
+      let totalDynamicCamber = camberGainFromSAI + camberGainFromCaster;
+
+      // Apply the calculated camber and toe angles
+      wheel.rotation.y = radians(-this.camberAngle) + totalDynamicCamber + manualOffsetY; // Inverse camber angle for passenger wheel
+      wheel.rotation.z = -this.turnAngle * Math.PI / 180 + manualOffsetZ;
+    } 
+    this.updateLabelVals(wheel);
+  });
+
+  this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
+}
+
+
+// place back inside updateTurnAngle
       // Label update section
-      this.updateLabelVals(wheel);
+      // this.updateLabelVals(wheel);
       // const label = wheel.userData['label'] as THREE.Sprite;
       // if (label) {
       //   this.updateLabel(label, wheel, wheel.name); // Include wheel.name
@@ -427,10 +466,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
       //   const initialText = `X: 0°, Y: 0°, Z: 0°`;
       //   wheel.userData['label'] = this.createLabel(wheel.name, initialText, labelPosition); // Include wheel.name
       // }
-    });
 
-    this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
-  }
 
 updateStatus() {
     let toeStatus = '';
