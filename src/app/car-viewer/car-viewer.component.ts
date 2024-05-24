@@ -19,8 +19,27 @@ export class CarViewerComponent implements OnInit {
   renderer!: THREE.WebGLRenderer;
   // wheels: THREE.Mesh[] = [];
   wheels: THREE.Object3D[] = [];
-  // camberLines: THREE.Line[] = [];
-  // toeLines: THREE.Line[] = [];
+
+  //// Caster ANGLE ////////
+  casterAngle: number = 0; // 0 ==10 caster angle in degrees
+  //////////////////////////
+
+  angleToCalibrateLines: number = 30;
+  casterAngleCalibrated: number = this.casterAngle + this.angleToCalibrateLines; // calibrated to align with green axis line
+  fROffsetTOE = 9;
+  fROffsetCAMBER = 2;
+  fROffsetXRotation = 20 + this.casterAngle; // add desired caster angle
+  sAI = 10;
+  fLOffsetTOE = -11;
+  fLOffsetCAMBER = 0;
+  lastCamberAngleD: number = 0;
+  //rotate driverwheel to get axis at 0 degrees
+  xAngleRotationD: number = 21.5; 
+  fLOffsetXRotation = -43 - this.casterAngle; // add desired caster angle IMPORTANT, if you change this value, you must compensate     camberLine.rotation.x = Math.PI / 2;  // Rotate to align vertically
+  driverWheelOuterOff = 90;
+  driverWheelOuterOffCam = -90;
+  driverWheelOuterOffCast = -12;
+  driverWheel = 'Wheel_FL_28';
   camberLines: THREE.Mesh[] = [];
   toeLines: THREE.Mesh[] = [];
   casterLines: THREE.Mesh[] = [];
@@ -35,17 +54,6 @@ export class CarViewerComponent implements OnInit {
   statusMessage: string = '';
   orbitControls!: OrbitControls;
   modelLoaded: boolean = false;
-  fROffsetTOE = 9;
-  fROffsetCAMBER = 2;
-  fROffsetXRotation = 30; // 10 degrees positive caster
-  sAI = 10;
-  fLOffsetTOE = -11;
-  fLOffsetCAMBER = 0;
-  fLOffsetXRotation = -50; // (-50) = 10 degrees positive caster IMPORTANT, if you change this value, you must compensate     camberLine.rotation.x = Math.PI / 2;  // Rotate to align vertically
-  driverWheelOuterOff = 90;
-  driverWheelOuterOffCam = -90;
-  driverWheelOuterOffCast = -12;
-  driverWheel = 'Wheel_FL_28';
   maxCamSpec = 2;  // Maximum camber specification
   minCamSpec = -2; // Minimum camber specification
   // driverWheelOuter = 'Sketchfab_model';
@@ -81,11 +89,11 @@ export class CarViewerComponent implements OnInit {
 
   loadCarModel() {
     const loader = new GLTFLoader();
-const modelPath = '/Alignment_Simulator/assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene.gltf';
-// for local host
-// const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-// const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
+    // const modelPath = '/Alignment_Simulator/assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
+    // const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene.gltf';
+    // for local host
+    const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
+    const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
 
     loader.load(modelPath, (gltf) => {
       const carModel = gltf.scene;
@@ -95,6 +103,7 @@ const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene
       carModel.traverse((node) => {
         console.log("node", node.name);
         if (node.name === this.passengerWheel || node.name === this.driverWheel) {
+        // if (node.name === this.driverWheel) {
           this.wheels.push(node);
           node.rotation.set(0, 0, 0); // Reset rotation or adjust to align correctly
           // Manually set the offset here
@@ -107,7 +116,7 @@ const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene
             // Adjust the Z-axis rotation to visually appear as zero
             node.rotation.z = this.fLOffsetTOE * Math.PI / 180; // Example adjustment
             node.rotation.y = this.fLOffsetCAMBER * Math.PI / 180; // Example adjustment
-            node.rotation.x = this.fLOffsetXRotation * Math.PI / 180; // Example adjustment
+            node.rotation.x = (this.xAngleRotationD/180) + (this.fLOffsetXRotation - this.casterAngle) * Math.PI / 180; // Example adjustment
           }
           foundWheels++;
 
@@ -122,6 +131,7 @@ const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene
 
           controls.addEventListener('objectChange', () => {
             this.updateLabel(node.userData['label'], node, node.name); // Update label on object change
+              
           });
 
           controls.addEventListener('mouseDown', () => {
@@ -149,77 +159,77 @@ const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene
         console.error('Failed to find both wheels');
       }
 
-      carModel.scale.set(1, 1, 1);
-      carModel.position.set(0, 0, 0);
+      carModel.scale.set(1.5, 1.5, 1.5);
+      carModel.position.set(0, -0.9, -2.1);
 
     });
 
 // outside wheel
-    loader.load(suspensionModelPath, (gltf) => {
-      // Original suspension model
-      const originalModel = gltf.scene;
-      originalModel.traverse((node) => {
-        console.log("wheel", node.name);
+    // loader.load(suspensionModelPath, (gltf) => {
+    //   // Original suspension model
+    //   const originalModel = gltf.scene;
+    //   originalModel.traverse((node) => {
+    //     console.log("wheel", node.name);
 
-        originalModel.scale.set(.3, .3, .3);
-        originalModel.position.set(1.5, -0.5, 2); // Position to the left of the original model
+    //     originalModel.scale.set(.3, .3, .3);
+    //     originalModel.position.set(1.5, -0.5, 2); // Position to the left of the original model
 
-        if (node.name === this.driverWheelOuter 
-          || node.name === this.driverWheelOuterCAM
-        ) {
-          // Adjust the Z-axis rotation to visually appear as zero
-          this.wheels.push(node);
-          node.rotation.set(0, 0, 90); // Reset rotation or adjust to align correctly
-          // Manually set the offset here
-          if (node.name === this.driverWheelOuter) {
-            // Adjust the Z-axis rotation to visually appear as zero
-            node.rotation.z = this.driverWheelOuterOff * Math.PI / 180; // Example adjustment
-            // node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
-          }
-          if (node.name === this.driverWheelOuterCAM) {
-            // Adjust the Z-axis rotation to visually appear as zero
-            node.rotation.z = this.driverWheelOuterOffCam * Math.PI / 180; // Example adjustment
-            // node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
-          }
+    //     if (node.name === this.driverWheelOuter 
+    //       || node.name === this.driverWheelOuterCAM
+    //     ) {
+    //       // Adjust the Z-axis rotation to visually appear as zero
+    //       this.wheels.push(node);
+    //       node.rotation.set(0, 0, 90); // Reset rotation or adjust to align correctly
+    //       // Manually set the offset here
+    //       if (node.name === this.driverWheelOuter) {
+    //         // Adjust the Z-axis rotation to visually appear as zero
+    //         node.rotation.z = this.driverWheelOuterOff * Math.PI / 180; // Example adjustment
+    //         // node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
+    //       }
+    //       if (node.name === this.driverWheelOuterCAM) {
+    //         // Adjust the Z-axis rotation to visually appear as zero
+    //         node.rotation.z = this.driverWheelOuterOffCam * Math.PI / 180; // Example adjustment
+    //         // node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
+    //       }
 
-          if (node.name === this.driverWheelOuterCAM) {
-            // Adjust the Z-axis rotation to visually appear as zero
-            node.rotation.x = this.driverWheelOuterOffCast * Math.PI / 180; // Example adjustment
-            // node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
-          }
+    //       if (node.name === this.driverWheelOuterCAM) {
+    //         // Adjust the Z-axis rotation to visually appear as zero
+    //         node.rotation.x = this.driverWheelOuterOffCast * Math.PI / 180; // Example adjustment
+    //         // node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
+    //       }
 
-           if (node.name === this.driverWheelOuter){
-          const controls = new TransformControls(this.camera, this.renderer.domElement);
-          controls.attach(node);
-          controls.space = 'local';  // Use local space for transformations
-          this.scene.add(controls);
-          controls.setMode('rotate');
-          controls.showX = false;
-          controls.showY = false;
-          controls.showZ = false;
-          controls.addEventListener('objectChange', () => {
-            this.updateLabel(node.userData['label'], node, node.name); // Update label on object change
-          });
+    //        if (node.name === this.driverWheelOuter){
+    //       const controls = new TransformControls(this.camera, this.renderer.domElement);
+    //       controls.attach(node);
+    //       controls.space = 'local';  // Use local space for transformations
+    //       this.scene.add(controls);
+    //       controls.setMode('rotate');
+    //       controls.showX = false;
+    //       controls.showY = false;
+    //       controls.showZ = false;
+    //       controls.addEventListener('objectChange', () => {
+    //         this.updateLabel(node.userData['label'], node, node.name); // Update label on object change
+    //       });
 
-          controls.addEventListener('mouseDown', () => {
-            this.orbitControls.enabled = false;
-          });
-          controls.addEventListener('mouseUp', () => {
-            this.orbitControls.enabled = true;
-            this.updateLabel(node.userData['label'], node, node.name); // Final update on mouse up
-          });
+    //       controls.addEventListener('mouseDown', () => {
+    //         this.orbitControls.enabled = false;
+    //       });
+    //       controls.addEventListener('mouseUp', () => {
+    //         this.orbitControls.enabled = true;
+    //         this.updateLabel(node.userData['label'], node, node.name); // Final update on mouse up
+    //       });
 
-          // Create labels
-          // const labelPosition = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld).add(new THREE.Vector3(2, 2, 0));
-          // const label = this.createLabel(node.name, 'X: 0°, Y: 0°, Z: 0°', labelPosition);
-          // node.userData['label'] = label;
-          // this.scene.add(label);
-        }
-        }
+    //       // Create labels
+    //       // const labelPosition = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld).add(new THREE.Vector3(2, 2, 0));
+    //       // const label = this.createLabel(node.name, 'X: 0°, Y: 0°, Z: 0°', labelPosition);
+    //       // node.userData['label'] = label;
+    //       // this.scene.add(label);
+    //     }
+    //     }
 
-        this.scene.add(originalModel);
-      });
-    });
+    //     this.scene.add(originalModel);
+    //   });
+    // });
   }
 
   resetAngles() {
@@ -248,28 +258,31 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     const radius = 0.02;   // Visible thickness
     const radialSegments = 8;  // Smoothness of the line
 
-    // caster Line (angles 10 degrees Vertical)
-    const casterLineMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const casterLineGeometry = new THREE.CylinderGeometry(radius, radius, lineLength, radialSegments);
-    const casterLine = new THREE.Mesh(casterLineGeometry, casterLineMaterial);
-    if(wheel.name === this.passengerWheel){
-    casterLine.rotation.x = Math.PI / 2.22;  // Rotate to align vertically
-    }
-    else{
-        casterLine.rotation.x = Math.PI / -2.22;  // Rotate to align vertically
-      }
-    casterLine.position.y += lineLength / -120;  // Position halfway up
-    wheel.add(casterLine);  // Parent to the wheel for correct relative position
-
-    // camber Line (Vertical)
-    const camberLineMaterial = new THREE.MeshBasicMaterial({ color: 0x32a852 });
+    // CAMBER Line (angles 10 degrees Vertical)
+    const camberLineMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const camberLineGeometry = new THREE.CylinderGeometry(radius, radius, lineLength, radialSegments);
     const camberLine = new THREE.Mesh(camberLineGeometry, camberLineMaterial);
-    camberLine.rotation.x = Math.PI / 2;  // Rotate to align vertically
-    camberLine.position.y += lineLength / -120;  // Position halfway up
+    if(wheel.name === this.passengerWheel){
+    camberLine.rotation.x = Math.PI / 2.22 ;  // Rotate to align vertically
+    }
+    else{
+        camberLine.rotation.x = Math.PI / -2.22 - (this.angleToCalibrateLines/180);  // Rotate to align vertically
+      }
+    camberLine.position.y += lineLength / -120;  
     wheel.add(camberLine);  // Parent to the wheel for correct relative position
 
-
+    // CASTER Line (Vertical)
+    const casterLineMaterial = new THREE.MeshBasicMaterial({ color: 0x32a852 });
+    const casterLineGeometry = new THREE.CylinderGeometry(radius, radius, lineLength, radialSegments);
+    const casterLine = new THREE.Mesh(casterLineGeometry, casterLineMaterial);
+    casterLine.rotation.x = Math.PI / 2;  // Rotate to align vertically
+    casterLine.position.y += lineLength / -120;  
+    wheel.add(casterLine);  // Parent to the wheel for correct relative position
+    this.scene.add(casterLine);
+    casterLine.rotation.x = (this.fLOffsetXRotation + 30) * Math.PI / 180; 
+    casterLine.rotation.z = 2 * Math.PI / 180; 
+    casterLine.position.set(1.25, -0.3, 0); // Position onto the wheel (lateral position fron vehicle center line, height, position longitudinal)
+    casterLine.scale.set(1.5, 1.5, 1.5);
     // Toe Line (Horizontal)
     const toeLineMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
     const toeLineGeometry = new THREE.CylinderGeometry(radius, radius, lineLength, radialSegments);
@@ -278,9 +291,9 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     toeLine.position.y += lineLength /-3;  // Position halfway along the z-axis
     wheel.add(toeLine);  // Parent to the wheel for correct relative position
 
-    this.camberLines[index] = camberLine;
-    this.toeLines[index] = toeLine;
-    this.casterLines[index] = toeLine;
+    // this.camberLines[index] = camberLine;
+    // this.toeLines[index] = toeLine;
+    // this.casterLines[index] = casterLine;
 }
 
 
@@ -293,7 +306,9 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
         // Create label if it does not exist
         const labelPosition = new THREE.Vector3().setFromMatrixPosition(wheel.matrixWorld).add(new THREE.Vector3(0, 2, 0));
         const initialText = `X: 0°, Y: 0°, Z: 0°`;
+
         wheel.userData['label'] = this.createLabel(wheel.name, initialText, labelPosition); // Include wheel.name
+
       }
   }
 
@@ -320,6 +335,13 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     this.driverToeAngle = value;
     this.changeDriver();
     this.updateStatus();
+  }
+
+  onxAngleRotationChange(event: any) {
+    // const value = parseFloat(event.target.value);
+    // this.xAngleRotationD = value;
+    // this.changeDriver();
+    // this.updateStatus();
     // this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
   }
   
@@ -329,7 +351,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     this.turnAngle = angle;
     this.changeDriver();
     this.updateTurnAngle();
-       this.updateStatus();
+    this.updateStatus();
   }
 
   onDriverCamberChange(event: any) {
@@ -340,8 +362,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     // this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
   }
 
- 
-changeDriver() {
+ changeDriver() {
     let manualOffsetZ = 0;
     let manualOffsetY = 0;
     let toeAngleD = 0;
@@ -372,12 +393,55 @@ changeDriver() {
 
     this.wheels.forEach((wheel, index) => {
         if (wheel.name === this.driverWheel) {
+            let initialX = -36; // Initial X when Y (camber) is 0
+            let initialZ = -11; // Initial Z when Y (camber) is 0
+
+                // Calculate changes based on current camber angle
+            let camberChangeY = this.camberAngle;
+  
+            // play with values to get a more realistic effect, these are approx and in reality there shouldn't be a different rate of change based on if camber is going + or -
+            // Positive Camber Changes
+            // Wheel_FL_28 (Driver's Wheel)
+            // X-axis: For every degree increase in Y, X changes by approximately +0.192 degrees.
+            // Z-axis: For every degree increase in Y, Z changes by approximately -0.038 degrees.
+            // Object_54 (Passenger's Wheel)
+            // X-axis: For every degree increase in Y, X changes by approximately +0.154 degrees.
+            // Z-axis: For every degree increase in Y, Z changes by approximately +0.038 degrees.
+            // Negative Camber Changes
+            // Wheel_FL_28 (Driver's Wheel)
+            // X-axis: For every degree decrease in Y, X changes by approximately -0.211 degrees.
+            // Z-axis: For every degree decrease in Y, Z changes by approximately -0.053 degrees.
+            // Object_54 (Passenger's Wheel)
+            // X-axis: For every degree decrease in Y, X changes by approximately -0.16 degrees.
+            // Z-axis: For every degree decrease in Y, Z changes by approximately +0.04 degrees.
+            console.log("lastCamberAngleD", this.lastCamberAngleD);
+            console.log("this.camberAngle", this.camberAngle);
+            console.log("camberChangeY", camberChangeY);
+            console.log("at adjust");
+            let changeX = camberChangeY * 0.180; // Derived rate for X
+            let changeZ = 0;
+            if(camberChangeY > 0){
+              changeZ = camberChangeY * -0.038; // Derived rate for Z if increasing Y, should be positive if moving in opposite direction
+            }
+            else{
+              changeZ = camberChangeY * 0.038; // Derived rate for Z if increasing Y, should be positive if moving in opposite direction
+            }
+            console.log("after adjust");
+            this.lastCamberAngleD = camberChangeY;
+            console.log("lastCamberAngleD", this.lastCamberAngleD);
             manualOffsetZ = this.fLOffsetTOE * Math.PI / 180; // Zero-toe offset
             manualOffsetY = radians(this.fLOffsetCAMBER); // Base static camber offset
 
+
+                // Adjust wheel rotations based on calculated changes
+                wheel.rotation.x = radians(initialX + changeX);
+                wheel.rotation.y = radians(this.camberAngle) + totalDynamicCamber;
+                wheel.rotation.z = radians(initialZ + changeZ) + toeAngleR;
+
+
             // Apply the calculated camber and toe angles
-            wheel.rotation.y = radians(this.camberAngle) + totalDynamicCamber + manualOffsetY;
-            wheel.rotation.z = toeAngleR + manualOffsetZ;
+            // wheel.rotation.y = radians(this.camberAngle) + totalDynamicCamber + manualOffsetY;
+            // wheel.rotation.z = toeAngleR + manualOffsetZ;
         }
         if (wheel.name === this.driverWheelOuter) {
         manualOffsetZ = this.driverWheelOuterOff * Math.PI / 180;
@@ -401,6 +465,53 @@ changeDriver() {
     this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
 }
 
+
+// changeDriver() {
+//         let manualOffsetZ = 0;
+//         let manualOffsetY = 0;
+//         let toeAngleD = 0;
+
+//         const radians = (degrees: number) => degrees * Math.PI / 180;
+
+//         if (this.driverToeAngle !== this.lastDriverToeAngle) {
+//             toeAngleD = this.driverToeAngle;
+//             this.lastDriverToeAngle = this.driverToeAngle;
+//         } else if (this.turnAngle !== this.lastTurnAngle) {
+//             toeAngleD = this.turnAngle;
+//             this.lastTurnAngle = this.turnAngle;
+//         } else if (this.toeAngle !== this.lastToeAngle) {
+//             toeAngleD = this.toeAngle;
+//             this.lastToeAngle = this.toeAngle;
+//         }
+
+//         let toeAngleR = radians(toeAngleD);
+//         let SAI = radians(this.sAI);
+//         let caster = radians(this.fLOffsetXRotation);
+
+//         let camberGainFromSAI = Math.sin(SAI) * Math.tan(toeAngleR);
+//         let camberGainFromCaster = Math.sin(caster) * Math.sin(toeAngleR);
+//         let totalDynamicCamber = Math.abs(camberGainFromSAI + camberGainFromCaster) * Math.sign(toeAngleD);
+
+//         this.wheels.forEach((wheel) => {
+//             if (wheel.name === this.driverWheel) {
+//                 let initialX = -36; // Initial X when Y (camber) is 0
+//                 let initialZ = -11; // Initial Z when Y (camber) is 0
+
+//                 // Calculate changes based on current camber angle
+//                 let camberChangeY = this.camberAngle - this.lastCamberAngleD;
+//                 let changeX = camberChangeY * 0.180; // Derived rate for X
+//                 let changeZ = camberChangeY * -0.038; // Derived rate for Z if increasing Y
+
+//                 // Adjust wheel rotations based on calculated changes
+//                 wheel.rotation.x = radians(initialX + changeX);
+//                 wheel.rotation.y = radians(this.camberAngle);
+//                 wheel.rotation.z = radians(initialZ + changeZ);
+//             }
+//         });
+
+//         this.updateStatus();
+//         this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
+//     }
 
 
 
@@ -546,6 +657,7 @@ this.statusMessage = `
     context.fillText(nodeName, 128, 64);  // Redraw the node name at the top
     context.fillText(`X: ${THREE.MathUtils.radToDeg(wheel.rotation.x).toFixed(0)}°, Y: ${THREE.MathUtils.radToDeg(wheel.rotation.y).toFixed(0)}°, Z: ${THREE.MathUtils.radToDeg(wheel.rotation.z).toFixed(0)}°`, 128, 128);
     label.material.map.needsUpdate = true;  // Important: update the texture map
+    console.log(`changes in axis for camber adjustment ${nodeName}:`, `X: ${THREE.MathUtils.radToDeg(wheel.rotation.x).toFixed(0)}°, Y: ${THREE.MathUtils.radToDeg(wheel.rotation.y).toFixed(0)}°, Z: ${THREE.MathUtils.radToDeg(wheel.rotation.z).toFixed(0)}°`);
   }
 
   createLabel(nodeName: string, text: string, position: THREE.Vector3): THREE.Sprite {
@@ -587,11 +699,11 @@ this.statusMessage = `
   // Corrected Camera Setup
   setupCameras() {
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.camera.position.set(0, 5, 5); // Side view
+    this.camera.position.set(0, 5, 5); // Front view
     this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 
     this.frontCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.frontCamera.position.set(5, 5, 5); // Front view
+    this.frontCamera.position.set(5, 5, 5); // Side view
     this.frontCamera.lookAt(new THREE.Vector3(0, 0, 0)); // Corrected method call
 
     this.currentCamera = this.camera;
