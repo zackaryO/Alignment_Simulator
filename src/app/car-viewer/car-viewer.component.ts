@@ -19,8 +19,30 @@ export class CarViewerComponent implements OnInit {
   renderer!: THREE.WebGLRenderer;
   // wheels: THREE.Mesh[] = [];
   wheels: THREE.Object3D[] = [];
-  camberLines: THREE.Line[] = [];
-  toeLines: THREE.Line[] = [];
+
+  //// Caster ANGLE ////////
+  casterAngle: number = 0; // 0 ==10 caster angle in degrees
+  //////////////////////////
+
+  angleToCalibrateLines: number = 30;
+  casterAngleCalibrated: number = this.casterAngle + this.angleToCalibrateLines; // calibrated to align with green axis line
+  fROffsetTOE = 9;
+  fROffsetCAMBER = 2;
+  fROffsetXRotation = 20 + this.casterAngle; // add desired caster angle
+  sAI = 10;
+  fLOffsetTOE = -11;
+  fLOffsetCAMBER = 0;
+  lastCamberAngleD: number = 0;
+  //rotate driverwheel to get axis at 0 degrees
+  xAngleRotationD: number = 21.5; 
+  fLOffsetXRotation = -43 - this.casterAngle; // add desired caster angle IMPORTANT, if you change this value, you must compensate     camberLine.rotation.x = Math.PI / 2;  // Rotate to align vertically
+  driverWheelOuterOff = 90;
+  driverWheelOuterOffCam = -90;
+  driverWheelOuterOffCast = -12;
+  driverWheel = 'Wheel_FL_28';
+  camberLines: THREE.Mesh[] = [];
+  toeLines: THREE.Mesh[] = [];
+  casterLines: THREE.Mesh[] = [];
   camberAngle: number = 0;
   toeAngle: number = 0;
   turnAngle: number = 0;
@@ -32,16 +54,6 @@ export class CarViewerComponent implements OnInit {
   statusMessage: string = '';
   orbitControls!: OrbitControls;
   modelLoaded: boolean = false;
-  fROffsetTOE = 11;
-  fROffsetCAMBER = -2;
-  fROffsetXRotation = 15;
-  fLOffsetTOE = -11;
-  fLOffsetCAMBER = -5;
-  fLOffsetXRotation = -21;
-  driverWheelOuterOff = 90;
-  driverWheelOuterOffCam = -90;
-  driverWheelOuterOffCast = -12;
-  driverWheel = 'Wheel_FL_28';
   maxCamSpec = 2;  // Maximum camber specification
   minCamSpec = -2; // Minimum camber specification
   // driverWheelOuter = 'Sketchfab_model';
@@ -77,8 +89,12 @@ export class CarViewerComponent implements OnInit {
 
   loadCarModel() {
     const loader = new GLTFLoader();
+    // const modelPath = '/Alignment_Simulator/assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
+    // const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene.gltf';
+    // for local host
     const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
     const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
+
     loader.load(modelPath, (gltf) => {
       const carModel = gltf.scene;
       this.scene.add(carModel);
@@ -87,6 +103,7 @@ export class CarViewerComponent implements OnInit {
       carModel.traverse((node) => {
         console.log("node", node.name);
         if (node.name === this.passengerWheel || node.name === this.driverWheel) {
+        // if (node.name === this.driverWheel) {
           this.wheels.push(node);
           node.rotation.set(0, 0, 0); // Reset rotation or adjust to align correctly
           // Manually set the offset here
@@ -99,7 +116,7 @@ export class CarViewerComponent implements OnInit {
             // Adjust the Z-axis rotation to visually appear as zero
             node.rotation.z = this.fLOffsetTOE * Math.PI / 180; // Example adjustment
             node.rotation.y = this.fLOffsetCAMBER * Math.PI / 180; // Example adjustment
-            node.rotation.x = this.fLOffsetXRotation * Math.PI / 180; // Example adjustment
+            node.rotation.x = (this.xAngleRotationD/180) + (this.fLOffsetXRotation - this.casterAngle) * Math.PI / 180; // Example adjustment
           }
           foundWheels++;
 
@@ -114,6 +131,7 @@ export class CarViewerComponent implements OnInit {
 
           controls.addEventListener('objectChange', () => {
             this.updateLabel(node.userData['label'], node, node.name); // Update label on object change
+              
           });
 
           controls.addEventListener('mouseDown', () => {
@@ -125,90 +143,93 @@ export class CarViewerComponent implements OnInit {
           });
 
           // Create labels
-          // const labelPosition = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld).add(new THREE.Vector3(0, 2, 0));
-          // const label = this.createLabel(node.name, 'X: 0°, Y(camber): 0°, Z(toe): 0°', labelPosition);
-          // node.userData['label'] = label;
-          // this.scene.add(label);
+          const labelPosition = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld).add(new THREE.Vector3(0, 2, 0));
+          const label = this.createLabel(node.name, 'X: 0°, Y(camber): 0°, Z(toe): 0°', labelPosition);
+          node.userData['label'] = label;
+          this.scene.add(label);
         }
       });
 
       if (foundWheels === 2) {
+        this.wheels.forEach((wheel, index) => {
+        this.addAxisLines(wheel, index);
+    });
         this.modelLoaded = true;
       } else {
         console.error('Failed to find both wheels');
       }
 
-      carModel.scale.set(1, 1, 1);
-      carModel.position.set(0, 0, 0);
+      carModel.scale.set(1.5, 1.5, 1.5);
+      carModel.position.set(0, -0.9, -2.1);
 
     });
 
 // outside wheel
-    loader.load(suspensionModelPath, (gltf) => {
-      // Original suspension model
-      const originalModel = gltf.scene;
-      originalModel.traverse((node) => {
-        console.log("wheel", node.name);
+    // loader.load(suspensionModelPath, (gltf) => {
+    //   // Original suspension model
+    //   const originalModel = gltf.scene;
+    //   originalModel.traverse((node) => {
+    //     console.log("wheel", node.name);
 
-        originalModel.scale.set(.3, .3, .3);
-        originalModel.position.set(1.5, -0.5, 2); // Position to the left of the original model
+    //     originalModel.scale.set(.3, .3, .3);
+    //     originalModel.position.set(1.5, -0.5, 2); // Position to the left of the original model
 
-        if (node.name === this.driverWheelOuter 
-          || node.name === this.driverWheelOuterCAM
-        ) {
-          // Adjust the Z-axis rotation to visually appear as zero
-          this.wheels.push(node);
-          node.rotation.set(0, 0, 90); // Reset rotation or adjust to align correctly
-          // Manually set the offset here
-          if (node.name === this.driverWheelOuter) {
-            // Adjust the Z-axis rotation to visually appear as zero
-            node.rotation.z = this.driverWheelOuterOff * Math.PI / 180; // Example adjustment
-            // node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
-          }
-          if (node.name === this.driverWheelOuterCAM) {
-            // Adjust the Z-axis rotation to visually appear as zero
-            node.rotation.z = this.driverWheelOuterOffCam * Math.PI / 180; // Example adjustment
-            // node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
-          }
+    //     if (node.name === this.driverWheelOuter 
+    //       || node.name === this.driverWheelOuterCAM
+    //     ) {
+    //       // Adjust the Z-axis rotation to visually appear as zero
+    //       this.wheels.push(node);
+    //       node.rotation.set(0, 0, 90); // Reset rotation or adjust to align correctly
+    //       // Manually set the offset here
+    //       if (node.name === this.driverWheelOuter) {
+    //         // Adjust the Z-axis rotation to visually appear as zero
+    //         node.rotation.z = this.driverWheelOuterOff * Math.PI / 180; // Example adjustment
+    //         // node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
+    //       }
+    //       if (node.name === this.driverWheelOuterCAM) {
+    //         // Adjust the Z-axis rotation to visually appear as zero
+    //         node.rotation.z = this.driverWheelOuterOffCam * Math.PI / 180; // Example adjustment
+    //         // node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
+    //       }
 
-          if (node.name === this.driverWheelOuterCAM) {
-            // Adjust the Z-axis rotation to visually appear as zero
-            node.rotation.x = this.driverWheelOuterOffCast * Math.PI / 180; // Example adjustment
-            // node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
-          }
+    //       if (node.name === this.driverWheelOuterCAM) {
+    //         // Adjust the Z-axis rotation to visually appear as zero
+    //         node.rotation.x = this.driverWheelOuterOffCast * Math.PI / 180; // Example adjustment
+    //         // node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
+    //       }
 
-           if (node.name === this.driverWheelOuter){
-          const controls = new TransformControls(this.camera, this.renderer.domElement);
-          controls.attach(node);
-          controls.space = 'local';  // Use local space for transformations
-          this.scene.add(controls);
-          controls.setMode('rotate');
-          controls.showX = false;
-          controls.showY = false;
-          controls.showZ = false;
-          controls.addEventListener('objectChange', () => {
-            this.updateLabel(node.userData['label'], node, node.name); // Update label on object change
-          });
+    //        if (node.name === this.driverWheelOuter){
+    //       const controls = new TransformControls(this.camera, this.renderer.domElement);
+    //       controls.attach(node);
+    //       controls.space = 'local';  // Use local space for transformations
+    //       this.scene.add(controls);
+    //       controls.setMode('rotate');
+    //       controls.showX = false;
+    //       controls.showY = false;
+    //       controls.showZ = false;
+    //       controls.addEventListener('objectChange', () => {
+    //         this.updateLabel(node.userData['label'], node, node.name); // Update label on object change
+    //       });
 
-          controls.addEventListener('mouseDown', () => {
-            this.orbitControls.enabled = false;
-          });
-          controls.addEventListener('mouseUp', () => {
-            this.orbitControls.enabled = true;
-            this.updateLabel(node.userData['label'], node, node.name); // Final update on mouse up
-          });
+    //       controls.addEventListener('mouseDown', () => {
+    //         this.orbitControls.enabled = false;
+    //       });
+    //       controls.addEventListener('mouseUp', () => {
+    //         this.orbitControls.enabled = true;
+    //         this.updateLabel(node.userData['label'], node, node.name); // Final update on mouse up
+    //       });
 
-          // Create labels
-          // const labelPosition = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld).add(new THREE.Vector3(2, 2, 0));
-          // const label = this.createLabel(node.name, 'X: 0°, Y: 0°, Z: 0°', labelPosition);
-          // node.userData['label'] = label;
-          // this.scene.add(label);
-        }
-        }
+    //       // Create labels
+    //       // const labelPosition = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld).add(new THREE.Vector3(2, 2, 0));
+    //       // const label = this.createLabel(node.name, 'X: 0°, Y: 0°, Z: 0°', labelPosition);
+    //       // node.userData['label'] = label;
+    //       // this.scene.add(label);
+    //     }
+    //     }
 
-        this.scene.add(originalModel);
-      });
-    });
+    //     this.scene.add(originalModel);
+    //   });
+    // });
   }
 
   resetAngles() {
@@ -219,6 +240,7 @@ export class CarViewerComponent implements OnInit {
     this.driverToeAngle = 0;
 
 
+
     // Update the range inputs if needed
     const camberInput = document.getElementById('camber') as HTMLInputElement;
     const toeInput = document.getElementById('toe') as HTMLInputElement;
@@ -227,30 +249,67 @@ export class CarViewerComponent implements OnInit {
 
     // Update wheel rotation and labels
     this.updateWheelRotation();
-       this.changeDriver();
+    this.changeDriver();
     this.updateStatus();
   }
 
-  addAxisLines(wheel: THREE.Object3D, index: number) {
-    const materialCamber = new THREE.LineBasicMaterial({ color: 0xff0000 });
-    const materialToe = new THREE.LineBasicMaterial({ color: 0x0000ff });
+addAxisLines(wheel: THREE.Object3D, index: number) {
+    const lineLength = 2;  // Adequate length to be visible
+    const radius = 0.02;   // Visible thickness
+    const radialSegments = 8;  // Smoothness of the line
 
-    const pointsCamber = [
-      new THREE.Vector3(wheel.position.x, wheel.position.y, wheel.position.z),
-      new THREE.Vector3(wheel.position.x, wheel.position.y + 1, wheel.position.z)
-    ];
-    const pointsToe = [
-      new THREE.Vector3(wheel.position.x - 0.5, wheel.position.y, wheel.position.z),
-      new THREE.Vector3(wheel.position.x + 0.5, wheel.position.y, wheel.position.z)
-    ];
+    // CAMBER Line (angles 10 degrees Vertical)
+    const camberLineMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const camberLineGeometry = new THREE.CylinderGeometry(radius, radius, lineLength, radialSegments);
+    const camberLine = new THREE.Mesh(camberLineGeometry, camberLineMaterial);
+    if(wheel.name === this.passengerWheel){
+    camberLine.rotation.x = Math.PI / 2.22 ;  // Rotate to align vertically
+    }
+    else{
+        camberLine.rotation.x = Math.PI / -2.22 - (this.angleToCalibrateLines/180);  // Rotate to align vertically
+      }
+    camberLine.position.y += lineLength / -120;  
+    wheel.add(camberLine);  // Parent to the wheel for correct relative position
 
-    const camberLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pointsCamber), materialCamber);
-    const toeLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pointsToe), materialToe);
+    // CASTER Line (Vertical)
+    const casterLineMaterial = new THREE.MeshBasicMaterial({ color: 0x32a852 });
+    const casterLineGeometry = new THREE.CylinderGeometry(radius, radius, lineLength, radialSegments);
+    const casterLine = new THREE.Mesh(casterLineGeometry, casterLineMaterial);
+    casterLine.rotation.x = Math.PI / 2;  // Rotate to align vertically
+    casterLine.position.y += lineLength / -120;  
+    wheel.add(casterLine);  // Parent to the wheel for correct relative position
+    this.scene.add(casterLine);
+    casterLine.rotation.x = (this.fLOffsetXRotation + 30) * Math.PI / 180; 
+    casterLine.rotation.z = 2 * Math.PI / 180; 
+    casterLine.position.set(1.25, -0.3, 0); // Position onto the wheel (lateral position fron vehicle center line, height, position longitudinal)
+    casterLine.scale.set(1.5, 1.5, 1.5);
+    // Toe Line (Horizontal)
+    const toeLineMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+    const toeLineGeometry = new THREE.CylinderGeometry(radius, radius, lineLength, radialSegments);
+    const toeLine = new THREE.Mesh(toeLineGeometry, toeLineMaterial);
+    toeLine.rotation.y = Math.PI / 2;  // Rotate to align horizontally
+    toeLine.position.y += lineLength /-3;  // Position halfway along the z-axis
+    wheel.add(toeLine);  // Parent to the wheel for correct relative position
 
-    this.scene.add(camberLine);
-    this.scene.add(toeLine);
-    this.camberLines[index] = camberLine;
-    this.toeLines[index] = toeLine;
+    // this.camberLines[index] = camberLine;
+    // this.toeLines[index] = toeLine;
+    // this.casterLines[index] = casterLine;
+}
+
+
+
+  updateLabelVals(wheel: THREE.Object3D) {
+      const label = wheel.userData['label'] as THREE.Sprite;
+      if (label) {
+        this.updateLabel(label, wheel, wheel.name); // Include wheel.name
+      } else {
+        // Create label if it does not exist
+        const labelPosition = new THREE.Vector3().setFromMatrixPosition(wheel.matrixWorld).add(new THREE.Vector3(0, 2, 0));
+        const initialText = `X: 0°, Y: 0°, Z: 0°`;
+
+        wheel.userData['label'] = this.createLabel(wheel.name, initialText, labelPosition); // Include wheel.name
+
+      }
   }
 
   onCamberChange(event: Event) {
@@ -276,6 +335,13 @@ export class CarViewerComponent implements OnInit {
     this.driverToeAngle = value;
     this.changeDriver();
     this.updateStatus();
+  }
+
+  onxAngleRotationChange(event: any) {
+    // const value = parseFloat(event.target.value);
+    // this.xAngleRotationD = value;
+    // this.changeDriver();
+    // this.updateStatus();
     // this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
   }
   
@@ -285,9 +351,10 @@ export class CarViewerComponent implements OnInit {
     this.turnAngle = angle;
     this.changeDriver();
     this.updateTurnAngle();
+    this.updateStatus();
   }
 
-    onDriverCamberChange(event: any) {
+  onDriverCamberChange(event: any) {
     const value = parseFloat(event.target.value);
     this.camberAngle = value;
     this.changeDriver();
@@ -295,83 +362,219 @@ export class CarViewerComponent implements OnInit {
     // this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
   }
 
- 
-  changeDriver() {
-      let manualOffsetZ = 0;
-      let manualOffsetY = 0;
-      let toeAngle = 0;
+ changeDriver() {
+    let manualOffsetZ = 0;
+    let manualOffsetY = 0;
+    let toeAngleD = 0;
+
     // Check if each specific angle has been updated
     if (this.driverToeAngle !== this.lastDriverToeAngle) {
-      toeAngle = this.driverToeAngle;
-      this.lastDriverToeAngle = this.driverToeAngle; // Update last known value
+        toeAngleD = this.driverToeAngle;
+        this.lastDriverToeAngle = this.driverToeAngle;
     } else if (this.turnAngle !== this.lastTurnAngle) {
-      toeAngle = this.turnAngle;
-      this.lastTurnAngle = this.turnAngle; // Update last known value
+        toeAngleD = this.turnAngle;
+        this.lastTurnAngle = this.turnAngle;
     } else if (this.toeAngle !== this.lastToeAngle) {
-      toeAngle = this.toeAngle;
-      this.lastToeAngle = this.toeAngle; // Update last known value
+        toeAngleD = this.toeAngle;
+        this.lastToeAngle = this.toeAngle;
     }
+
+    const radians = (degrees: number) => degrees * Math.PI / 180;
+
+    let toeAngleR = radians(toeAngleD);
+    let SAI = radians(this.sAI); // Steering Axis Inclination in degrees
+    let caster = radians(this.fLOffsetXRotation);
+
+    // Calculate camber gain from SAI and toe
+    let camberGainFromSAI = Math.sin(SAI) * Math.tan(toeAngleR);
+    let camberGainFromCaster = Math.sin(caster) * Math.sin(toeAngleR);
+    // Adjust camber gain sign to match the toe direction
+    let totalDynamicCamber = Math.abs(camberGainFromSAI + camberGainFromCaster) * Math.sign(toeAngleD);
+
     this.wheels.forEach((wheel, index) => {
-      if (wheel.name === this.driverWheel) {
-        manualOffsetZ = this.fLOffsetTOE * Math.PI / 180; // Example adjustment
-        manualOffsetY = this.fLOffsetCAMBER * Math.PI / 180; // Example adjustment
-        wheel.rotation.y = (this.camberAngle + Math.abs((-this.toeAngle*0.6))) * Math.PI / 180 + manualOffsetY; // Adjusting for camber and manual offset
+        if (wheel.name === this.driverWheel) {
+            let initialX = -36; // Initial X when Y (camber) is 0
+            let initialZ = -11; // Initial Z when Y (camber) is 0
 
-      }
-      wheel.rotation.z = toeAngle * Math.PI / 180 + manualOffsetZ;   // Adjusting for toe and manual offset
+                // Calculate changes based on current camber angle
+            let camberChangeY = this.camberAngle;
+  
+            // play with values to get a more realistic effect, these are approx and in reality there shouldn't be a different rate of change based on if camber is going + or -
+            // Positive Camber Changes
+            // Wheel_FL_28 (Driver's Wheel)
+            // X-axis: For every degree increase in Y, X changes by approximately +0.192 degrees.
+            // Z-axis: For every degree increase in Y, Z changes by approximately -0.038 degrees.
+            // Object_54 (Passenger's Wheel)
+            // X-axis: For every degree increase in Y, X changes by approximately +0.154 degrees.
+            // Z-axis: For every degree increase in Y, Z changes by approximately +0.038 degrees.
+            // Negative Camber Changes
+            // Wheel_FL_28 (Driver's Wheel)
+            // X-axis: For every degree decrease in Y, X changes by approximately -0.211 degrees.
+            // Z-axis: For every degree decrease in Y, Z changes by approximately -0.053 degrees.
+            // Object_54 (Passenger's Wheel)
+            // X-axis: For every degree decrease in Y, X changes by approximately -0.16 degrees.
+            // Z-axis: For every degree decrease in Y, Z changes by approximately +0.04 degrees.
+            console.log("lastCamberAngleD", this.lastCamberAngleD);
+            console.log("this.camberAngle", this.camberAngle);
+            console.log("camberChangeY", camberChangeY);
+            console.log("at adjust");
+            let changeX = camberChangeY * 0.180; // Derived rate for X
+            let changeZ = 0;
+            if(camberChangeY > 0){
+              changeZ = camberChangeY * -0.038; // Derived rate for Z if increasing Y, should be positive if moving in opposite direction
+            }
+            else{
+              changeZ = camberChangeY * 0.038; // Derived rate for Z if increasing Y, should be positive if moving in opposite direction
+            }
+            console.log("after adjust");
+            this.lastCamberAngleD = camberChangeY;
+            console.log("lastCamberAngleD", this.lastCamberAngleD);
+            manualOffsetZ = this.fLOffsetTOE * Math.PI / 180; // Zero-toe offset
+            manualOffsetY = radians(this.fLOffsetCAMBER); // Base static camber offset
 
-      if (wheel.name === this.driverWheelOuter) {
-        manualOffsetZ = this.driverWheelOuterOff * Math.PI / 180; 
-        wheel.rotation.x = -toeAngle * Math.PI / 180; 
-        wheel.rotation.z =  -Math.abs((-toeAngle*0.4)) * Math.PI / 180 + manualOffsetZ;
+
+                // Adjust wheel rotations based on calculated changes
+                wheel.rotation.x = radians(initialX + changeX);
+                wheel.rotation.y = radians(this.camberAngle) + totalDynamicCamber;
+                wheel.rotation.z = radians(initialZ + changeZ) + toeAngleR;
+
+
+            // Apply the calculated camber and toe angles
+            // wheel.rotation.y = radians(this.camberAngle) + totalDynamicCamber + manualOffsetY;
+            // wheel.rotation.z = toeAngleR + manualOffsetZ;
+        }
+        if (wheel.name === this.driverWheelOuter) {
+        manualOffsetZ = this.driverWheelOuterOff * Math.PI / 180;
+        wheel.rotation.x = -toeAngleR;
+        if(toeAngleD > 0){
+          wheel.rotation.z = -Math.abs((toeAngleD * 0.4)) * Math.PI / 180 + manualOffsetZ;
+        }
+        else{
+        wheel.rotation.z = Math.abs((toeAngleD * 0.4)) * Math.PI / 180 + manualOffsetZ;
+        }
+
       }
 
       if (wheel.name === this.driverWheelOuterCAM) {
-        manualOffsetZ = this.driverWheelOuterOffCam * Math.PI / 180; // Example adjustment
-        wheel.rotation.z = -this.camberAngle * Math.PI / 180 + manualOffsetZ;
+        manualOffsetZ = this.driverWheelOuterOffCam * Math.PI / 180;
+        wheel.rotation.z = radians(this.camberAngle) + manualOffsetZ;
       }
-
     });
     this.updateStatus();
+    
     this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
-  }
+}
 
-  // Total Toe and Cross Camber
-  updateWheelRotation() {
-    this.wheels.forEach((wheel, index) => {
-      // Preserve the manually set offset
-      let manualOffsetZ = 0;
-      let manualOffsetY = 0;
-      if (wheel.name === this.passengerWheel) {
-        manualOffsetZ = this.fROffsetTOE * Math.PI / 180; // Example adjustment
-        manualOffsetY = this.fROffsetCAMBER * Math.PI / 180; // Example adjustment
-        wheel.rotation.y = (-this.camberAngle + -Math.abs((-this.toeAngle*0.6))) * Math.PI / 180 + manualOffsetY; // Inverse camber angle for passenger wheel
-        wheel.rotation.z = this.toeAngle * Math.PI / 180 + manualOffsetZ;   // Adjusting for toe and manual offset
-      } 
-    });
 
-    this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
-  }
+// changeDriver() {
+//         let manualOffsetZ = 0;
+//         let manualOffsetY = 0;
+//         let toeAngleD = 0;
 
-  // Total Toe and Cross Camber
-  updateTurnAngle() {
-    this.wheels.forEach((wheel, index) => {
-      // Preserve the manually set offset
-      let manualOffsetZ = 0;
-      let manualOffsetY = 0;
-      if (wheel.name === this.passengerWheel) {
-        manualOffsetZ = this.fROffsetTOE * Math.PI / 180; // Example adjustment
-        manualOffsetY = this.fROffsetCAMBER * Math.PI / 180; // Example adjustment
-        wheel.rotation.y = (-this.camberAngle + -Math.abs((-this.turnAngle*0.6))) * Math.PI / 180 + manualOffsetY; // Inverse camber angle for passenger wheel
-        wheel.rotation.z = -this.turnAngle * Math.PI / 180 + manualOffsetZ;
-      } 
+//         const radians = (degrees: number) => degrees * Math.PI / 180;
 
-      // if (wheel.name === this.driverWheelOuterCAM) {
-      //   manualOffsetZ = this.driverWheelOuterOffCam * Math.PI / 180; // Example adjustment
-      //   wheel.rotation.z = -this.camberAngle * Math.PI / 180 + manualOffsetZ;
-      // }
+//         if (this.driverToeAngle !== this.lastDriverToeAngle) {
+//             toeAngleD = this.driverToeAngle;
+//             this.lastDriverToeAngle = this.driverToeAngle;
+//         } else if (this.turnAngle !== this.lastTurnAngle) {
+//             toeAngleD = this.turnAngle;
+//             this.lastTurnAngle = this.turnAngle;
+//         } else if (this.toeAngle !== this.lastToeAngle) {
+//             toeAngleD = this.toeAngle;
+//             this.lastToeAngle = this.toeAngle;
+//         }
 
+//         let toeAngleR = radians(toeAngleD);
+//         let SAI = radians(this.sAI);
+//         let caster = radians(this.fLOffsetXRotation);
+
+//         let camberGainFromSAI = Math.sin(SAI) * Math.tan(toeAngleR);
+//         let camberGainFromCaster = Math.sin(caster) * Math.sin(toeAngleR);
+//         let totalDynamicCamber = Math.abs(camberGainFromSAI + camberGainFromCaster) * Math.sign(toeAngleD);
+
+//         this.wheels.forEach((wheel) => {
+//             if (wheel.name === this.driverWheel) {
+//                 let initialX = -36; // Initial X when Y (camber) is 0
+//                 let initialZ = -11; // Initial Z when Y (camber) is 0
+
+//                 // Calculate changes based on current camber angle
+//                 let camberChangeY = this.camberAngle - this.lastCamberAngleD;
+//                 let changeX = camberChangeY * 0.180; // Derived rate for X
+//                 let changeZ = camberChangeY * -0.038; // Derived rate for Z if increasing Y
+
+//                 // Adjust wheel rotations based on calculated changes
+//                 wheel.rotation.x = radians(initialX + changeX);
+//                 wheel.rotation.y = radians(this.camberAngle);
+//                 wheel.rotation.z = radians(initialZ + changeZ);
+//             }
+//         });
+
+//         this.updateStatus();
+//         this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
+//     }
+
+
+
+
+  // deals with passenger side for total toe, the passenger side toe move opposite of the driver side toe
+updateWheelRotation() {
+  const radians = (degrees: number) => degrees * Math.PI / 180;
+  let SAI = radians(this.sAI);  // Same Steering Axis Inclination for both sides
+  let caster = radians(this.fROffsetXRotation);  // Different caster offset for passenger
+
+  this.wheels.forEach((wheel, index) => {
+    if (wheel.name === this.passengerWheel) {
+      let manualOffsetZ = this.fROffsetTOE * Math.PI / 180; // Example adjustment
+      let manualOffsetY = radians(this.fROffsetCAMBER); // Example adjustment
+      
+      let toeAngleR = -radians(this.toeAngle);  // Negative because toe moves oppositely
+      // Calculate camber gain from SAI and toe, note the toe direction effect is reversed
+      let camberGainFromSAI = Math.sin(SAI) * Math.tan(toeAngleR);
+      let camberGainFromCaster = Math.sin(caster) * Math.sin(toeAngleR);
+      let totalDynamicCamber = camberGainFromSAI + camberGainFromCaster;
+
+      // Apply the calculated camber and toe angles
+      wheel.rotation.y = radians(-this.camberAngle) + totalDynamicCamber + manualOffsetY; // Inverse camber angle for passenger wheel
+      wheel.rotation.z = this.toeAngle * Math.PI / 180 + manualOffsetZ;   // Adjusting for toe and manual offset
+    } 
+    this.updateLabelVals(wheel);
+  });
+
+  this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
+}
+
+
+  // deals with passenger side for total toe, the passenger side toe move WITH the driver side toe
+updateTurnAngle() {
+  const radians = (degrees: number) => degrees * Math.PI / 180;
+  let SAI = radians(this.sAI);  // Same Steering Axis Inclination for both sides
+  let caster = radians(this.fROffsetXRotation);  // Different caster offset for passenger
+
+  this.wheels.forEach((wheel, index) => {
+    if (wheel.name === this.passengerWheel) {
+      let manualOffsetZ = this.fROffsetTOE * Math.PI / 180; // Example adjustment
+      let manualOffsetY = radians(this.fROffsetCAMBER); // Example adjustment
+      
+      let toeAngleR = radians(this.turnAngle);
+      // Calculate camber gain from SAI and toe
+      let camberGainFromSAI = Math.sin(SAI) * Math.tan(toeAngleR);
+      let camberGainFromCaster = Math.sin(caster) * Math.sin(toeAngleR);
+      let totalDynamicCamber = camberGainFromSAI + camberGainFromCaster;
+
+      // Apply the calculated camber and toe angles
+      wheel.rotation.y = radians(-this.camberAngle) + totalDynamicCamber + manualOffsetY; // Inverse camber angle for passenger wheel
+      wheel.rotation.z = -this.turnAngle * Math.PI / 180 + manualOffsetZ;
+    } 
+    this.updateLabelVals(wheel);
+  });
+
+  this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
+}
+
+
+// place back inside updateTurnAngle
       // Label update section
+      // this.updateLabelVals(wheel);
       // const label = wheel.userData['label'] as THREE.Sprite;
       // if (label) {
       //   this.updateLabel(label, wheel, wheel.name); // Include wheel.name
@@ -381,10 +584,7 @@ export class CarViewerComponent implements OnInit {
       //   const initialText = `X: 0°, Y: 0°, Z: 0°`;
       //   wheel.userData['label'] = this.createLabel(wheel.name, initialText, labelPosition); // Include wheel.name
       // }
-    });
 
-    this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
-  }
 
 updateStatus() {
     let toeStatus = '';
@@ -422,17 +622,24 @@ if ((this.driverCamberAngle <= this.maxCamSpec) && (this.driverCamberAngle >= th
 }
 
 //need to give toe a range
-if ((this.toeAngle === 0) && (this.driverCamberAngle <= this.maxCamSpec) && (this.driverCamberAngle >= this.minCamSpec) && (this.toeAngle === 0) 
-  && (this.driverToeAngle === 0)) {
-    // tireWearStatus = '<span class="normal-wear">Normal tire wear</span>';
-    pullDirectionStatus = '<span class="no pull">No pull</span>';
-}
+  if ((this.toeAngle === 0) && (this.driverCamberAngle <= this.maxCamSpec) && (this.driverCamberAngle >= this.minCamSpec) && (this.toeAngle === 0) 
+    && (this.driverToeAngle === 0)) 
+    {
+        // tireWearStatus = '<span class="normal-wear">Normal tire wear</span>';
+        pullDirectionStatus = '<span class="no pull">No pull</span>';
+    }
 
-    this.statusMessage = `
-      <h1>Toe</h1>${toeStatus}
-      <h1>Tire Wear</h1>${tireWearStatus}
-      <h1>Pull Direction</h1>${pullDirectionStatus}
-    `;
+this.statusMessage = `
+    <div class="status-item">
+        <h1>Toe</h1><span>${toeStatus}</span>
+    </div>
+    <div class="status-item">
+        <h1>Tire Wear</h1><span>${tireWearStatus}</span>
+    </div>
+    <div class="status-item">
+        <h1>Pull Direction</h1><span>${pullDirectionStatus}</span>
+    </div>
+`;
   }
 
   updateLabel(label: THREE.Sprite, wheel: THREE.Object3D, nodeName: string) {
@@ -450,6 +657,7 @@ if ((this.toeAngle === 0) && (this.driverCamberAngle <= this.maxCamSpec) && (thi
     context.fillText(nodeName, 128, 64);  // Redraw the node name at the top
     context.fillText(`X: ${THREE.MathUtils.radToDeg(wheel.rotation.x).toFixed(0)}°, Y: ${THREE.MathUtils.radToDeg(wheel.rotation.y).toFixed(0)}°, Z: ${THREE.MathUtils.radToDeg(wheel.rotation.z).toFixed(0)}°`, 128, 128);
     label.material.map.needsUpdate = true;  // Important: update the texture map
+    console.log(`changes in axis for camber adjustment ${nodeName}:`, `X: ${THREE.MathUtils.radToDeg(wheel.rotation.x).toFixed(0)}°, Y: ${THREE.MathUtils.radToDeg(wheel.rotation.y).toFixed(0)}°, Z: ${THREE.MathUtils.radToDeg(wheel.rotation.z).toFixed(0)}°`);
   }
 
   createLabel(nodeName: string, text: string, position: THREE.Vector3): THREE.Sprite {
@@ -491,11 +699,11 @@ if ((this.toeAngle === 0) && (this.driverCamberAngle <= this.maxCamSpec) && (thi
   // Corrected Camera Setup
   setupCameras() {
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.camera.position.set(0, 5, 5); // Side view
+    this.camera.position.set(0, 5, 5); // Front view
     this.camera.lookAt(new THREE.Vector3(0, 0, 0));
 
     this.frontCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    this.frontCamera.position.set(5, 5, 5); // Front view
+    this.frontCamera.position.set(5, 5, 5); // Side view
     this.frontCamera.lookAt(new THREE.Vector3(0, 0, 0)); // Corrected method call
 
     this.currentCamera = this.camera;
@@ -509,10 +717,11 @@ if ((this.toeAngle === 0) && (this.driverCamberAngle <= this.maxCamSpec) && (thi
     this.scene.add(directionalLight);
   }
 
-  animate() {
+animate() {
     requestAnimationFrame(() => this.animate());
+    // any updates or checks here
     this.renderer.render(this.scene, this.currentCamera);
-  }
+}
 
   toggleView() {
     this.currentCamera = this.currentCamera === this.camera ? this.frontCamera : this.camera;
@@ -524,372 +733,3 @@ if ((this.toeAngle === 0) && (this.driverCamberAngle <= this.maxCamSpec) && (thi
     return `${degrees}° ${minutes.toFixed(0)}'`;
   }
 }
-
-
-
-// import { Component, ElementRef, OnInit, ViewChild } from '@angular/core';
-// import * as THREE from 'three';
-// import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-// import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
-// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-// import { nodeArray } from 'three/examples/jsm/nodes/shadernode/ShaderNode';
-
-
-
-// @Component({
-//   selector: 'app-car-viewer',
-//   templateUrl: './car-viewer.component.html',
-//   styleUrls: ['./car-viewer.component.css']
-// })
-// export class CarViewerComponent implements OnInit {
-//   @ViewChild('rendererContainer', { static: true }) rendererContainer!: ElementRef<HTMLDivElement>;
-
-//   scene!: THREE.Scene;
-//   camera!: THREE.PerspectiveCamera;
-//   frontCamera!: THREE.PerspectiveCamera;
-//   currentCamera!: THREE.PerspectiveCamera;
-//   renderer!: THREE.WebGLRenderer;
-//   wheels: THREE.Mesh[] = [];
-//   camberLines: THREE.Line[] = [];
-//   toeLines: THREE.Line[] = [];
-//   camberAngle: number = 0;
-//   toeAngle: number = 0;
-//   orbitControls!: OrbitControls;
-//   modelLoaded: boolean = false;
-
-//   constructor() { }
-
-//   ngOnInit() {
-//     this.initThree();
-
-//   }
-
-//   initThree() {
-//     // Initial setup for the scene, camera, and renderer
-//     this.scene = new THREE.Scene();
-//     this.setupCameras();
-//     this.renderer = new THREE.WebGLRenderer({ antialias: true });
-//     this.renderer.setSize(window.innerWidth, window.innerHeight);
-//     this.renderer.setClearColor(0xeeeeee);
-//     this.rendererContainer.nativeElement.appendChild(this.renderer.domElement);
-//     this.setupLights();
-//     this.loadCarModel();
-//     this.animate();
-//     // this.setupWheels();
-
-//     this.orbitControls = new OrbitControls(this.camera, this.renderer.domElement);
-//   }
-
-
-//   // loadCarModel() {
-//   //   const loader = new GLTFLoader();
-//   //   const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-//   //   loader.load(modelPath, (gltf) => {
-//   //     const carModel = gltf.scene;
-//   //     console.log('Car model loaded:', carModel);
-
-//   //     // Traverse the model to log all nodes
-//   //     carModel.traverse((node) => {
-//   //       console.log('Node found:', node.name, node.type);  // Log the name and type of each node
-//   //       if (node instanceof THREE.Mesh && /wheel/i.test(node.name)) {
-//   //         this.wheels.push(node);  // Add the wheel to the wheels array only if it's a Mesh
-//   //       }
-//   //     });
-
-//   //     carModel.scale.set(1.5, 1.5, 1.5);
-//   //     carModel.position.set(0, 0, 0);
-//   //     this.scene.add(carModel);
-//   //   }, (xhr) => {
-//   //     console.log(`Model ${modelPath} loading progress: ${xhr.loaded / xhr.total * 100}%`);
-//   //   }, (error) => {
-//   //     console.error(`An error happened while loading the model at ${modelPath}:`, error);
-//   //   });
-//   // }
-
-// loadCarModel() {
-//   const loader = new GLTFLoader();
-//   const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-//   loader.load(modelPath, (gltf) => {
-//     const carModel = gltf.scene;
-//     this.scene.add(carModel);
-//     carModel.traverse((node) => {
-//       if (node.name === 'Wheel_FL_28' || node.name === 'Wheel_FR_32') {
-//         const controls = new TransformControls(this.camera, this.renderer.domElement);
-//         controls.attach(node);
-//         this.scene.add(controls);
-
-//         // Set mode to 'rotate' for general rotation
-//         controls.setMode('rotate');
-//         controls.showX = false; // Enable rotation handle for X-axis (pitch)
-//         controls.showY = true; // Enable rotation handle for Y-axis (TOE)
-//         controls.showZ = true; // enable rotation handle for Z-axis (CAMBER)
-
-//         controls.addEventListener('mouseDown', () => {
-//           this.orbitControls.enabled = false;  // Disable orbit controls when using transform controls
-//         });
-//         controls.addEventListener('mouseUp', () => {
-//           this.orbitControls.enabled = true;  // Re-enable orbit controls after using transform controls
-//         });
-//       }
-//     });
-
-//     carModel.scale.set(1.5, 1.5, 1.5);
-//     carModel.position.set(0, 0, 0);
-//   }, (xhr) => {
-//     console.log(`Model ${modelPath} loading progress: ${xhr.loaded / xhr.total * 100}%`);
-//   }, (error) => {
-//     console.error(`An error happened while loading the model at ${modelPath}:`, error);
-//   });
-// }
-
-//   // loadCarModel() {
-//   //   const loader = new GLTFLoader();
-//   //   const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-//   //   loader.load(modelPath, (gltf) => {
-//   //     const carModel = gltf.scene;
-//   //     this.scene.add(carModel);
-
-//   //     let wheelFLFound = false;
-//   //     let wheelFRFound = false;
-
-//   //     carModel.traverse((node) => {
-//   //       // Ensure the node is both a mesh and one of the wheels we're interested in before assigning
-//   //       if (node instanceof THREE.Mesh) {
-//   //         if (node.name === 'Wheel_FL_28') {
-//   //           this.wheels[0] = node;  // Correct indexing with type assurance
-//   //           wheelFLFound = true;
-//   //         } else if (node.name === 'Wheel_FR_32') {
-//   //           this.wheels[1] = node;
-//   //           wheelFRFound = true;
-//   //         }
-//   //       }
-//   //     });
-
-//   //     if (wheelFLFound && wheelFRFound) {
-//   //       this.modelLoaded = true;  // Set the model loaded flag to true only if both wheels are found
-//   //     } else {
-//   //       console.error('Expected wheel nodes not found!');
-//   //     }
-
-//   //     carModel.scale.set(1.5, 1.5, 1.5);
-//   //     carModel.position.set(0, 0, 0);
-//   //   }, (xhr) => {
-//   //     console.log(`Model ${modelPath} loading progress: ${xhr.loaded / xhr.total * 100}%`);
-//   //   }, (error) => {
-//   //     console.error(`An error happened while loading the model at ${modelPath}:`, error);
-//   //   });
-//   // }
-
-
-//   // addStaticLine(wheel: THREE.Object3D, color: number): THREE.Line {
-//   //   const material = new THREE.LineBasicMaterial({ color: color });
-//   //   const points = [
-//   //     new THREE.Vector3(wheel.position.x, wheel.position.y, wheel.position.z),
-//   //     new THREE.Vector3(wheel.position.x, wheel.position.y + 1, wheel.position.z)
-//   //   ];
-//   //   const geometry = new THREE.BufferGeometry().setFromPoints(points);
-//   //   const line = new THREE.Line(geometry, material);
-//   //   this.scene.add(line);
-//   //   return line;
-//   // }
-
-//   addStaticLine(wheel: THREE.Mesh, color: number, isToe: boolean): THREE.Line {
-//     const material = new THREE.LineBasicMaterial({ color: color });
-//     let points;
-//     if (isToe) {
-//       // Make the toe lines parallel to the front wheels by extending along the Z-axis
-//       points = [
-//         new THREE.Vector3(wheel.position.x, wheel.position.y, wheel.position.z - 1),
-//         new THREE.Vector3(wheel.position.x, wheel.position.y, wheel.position.z + 1)
-//       ];
-//     } else {
-//       // Camber lines remain as is, vertical in the Y-direction
-//       points = [
-//         new THREE.Vector3(wheel.position.x, wheel.position.y, wheel.position.z),
-//         new THREE.Vector3(wheel.position.x, wheel.position.y + 1, wheel.position.z)
-//       ];
-//     }
-//     const geometry = new THREE.BufferGeometry().setFromPoints(points);
-//     const line = new THREE.Line(geometry, material);
-//     this.scene.add(line);
-//     return line;
-//   }
-
-
-
-
-
-//   updateCamberLines(index: number) {
-//     const wheel = this.wheels[index];
-//     const angle = this.camberAngle * Math.PI / 180; // Convert to radians
-
-//     const yOffset = Math.sin(angle); // Adjust Y based on angle, simulating camber tilt
-
-//     const startPoint = new THREE.Vector3(wheel.position.x, wheel.position.y, wheel.position.z);
-//     const endPoint = new THREE.Vector3(wheel.position.x, wheel.position.y + 4, wheel.position.z + yOffset);
-
-//     this.camberLines[index].geometry.setFromPoints([startPoint, endPoint]);
-//     this.camberLines[index].geometry.computeBoundingSphere();
-//   }
-
-//   updateToeLines(index: number) {
-//     const wheel = this.wheels[index];
-//     const angle = this.toeAngle * Math.PI / 180; // Convert to radians
-
-//     const zOffset = Math.sin(angle); // Adjust Z based on toe angle
-
-//     const startPoint = new THREE.Vector3(wheel.position.x, wheel.position.y, wheel.position.z);
-//     const endPoint = new THREE.Vector3(wheel.position.x + zOffset, wheel.position.y, wheel.position.z + 4);
-
-//     this.toeLines[index].geometry.setFromPoints([startPoint, endPoint]);
-//     this.toeLines[index].geometry.computeBoundingSphere();
-//   }
-
-
-//   setupCameras() {
-//     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-//     this.camera.position.set(0, 5, 5); // Side view
-//     this.camera.lookAt(new THREE.Vector3(0, 0, 0));
-
-//     this.frontCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-//     this.frontCamera.position.set(5, 5, 5); // Front view
-//     this.frontCamera.lookAt(new THREE.Vector3(0, 0, 0));
-
-//     this.currentCamera = this.camera;
-//   }
-
-//   setupLights() {
-//     const ambientLight = new THREE.AmbientLight(0xffffff, 5);
-//     this.scene.add(ambientLight);
-//     const directionalLight = new THREE.DirectionalLight(0xffffff, 9);
-//     directionalLight.position.set(1, 1, 1);
-//     this.scene.add(directionalLight);
-//   }
-
-
-//   setupWheels() {
-//     // const carMaterial = new THREE.MeshStandardMaterial({ color: 0x778899 });
-//     // const carGeometry = new THREE.BoxGeometry(3, 1, 2);
-//     // const car = new THREE.Mesh(carGeometry, carMaterial);
-//     // car.position.set(0, 0.5, 0);
-//     // this.scene.add(car);
-
-//     const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
-//     const wheelGeometry = new THREE.CylinderGeometry(0.64, 0.64, 0.6, 32);
-//     const positions = [
-//       { x: -1.2, y: 0.4, z: 2 },  // Front left
-//       { x: 1.2, y: 0.4, z: 2 },   // Front right
-//       { x: -1.5, y: 0.2, z: -1 }, // Rear left
-//       { x: 1.5, y: 0.2, z: -1 }   // Rear right
-//     ];
-//     positions.forEach(pos => {
-//       const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-//       wheel.rotation.z = Math.PI / 2; // Correct orientation for the wheels
-//       wheel.position.set(pos.x, pos.y, pos.z);
-//       this.scene.add(wheel);
-//       this.wheels.push(wheel);
-//     });
-//     // Static axis lines for each wheel
-//     this.wheels.forEach((wheel, index) => {
-//       this.camberLines.push(this.addStaticLine(wheel, 0xff0000, false)); // Red for camber
-//       this.toeLines.push(this.addStaticLine(wheel, 0x0000ff, true)); // Blue for toe
-//     });
-//   }
-
-
-
-//   animate() {
-//     requestAnimationFrame(() => this.animate());
-//     this.renderer.render(this.scene, this.currentCamera);
-//   }
-
-//   toggleView() {
-//     this.currentCamera = this.currentCamera === this.camera ? this.frontCamera : this.camera;
-//   }
-
-//   formatDegrees(value: number): string {
-//     const degrees = Math.floor(value);
-//     const minutes = Math.abs((value - degrees) * 60);
-//     return `${degrees}° ${minutes.toFixed(0)}'`;
-//   }
-
-//   onCamberChange(event: any) {
-//     const angle = parseFloat(event.target.value);
-//     this.camberAngle = angle;
-//     this.wheels.forEach(wheel => {
-//       if (wheel instanceof THREE.Mesh) { // Safeguard to ensure correct type
-//         wheel.rotation.z = angle * Math.PI / 180; // Example rotation adjustment
-//       }
-//     });
-//   }
-
-//   onToeChange(event: any) {
-//     const angle = parseFloat(event.target.value);
-//     this.toeAngle = angle;
-//     // this.wheels.forEach(wheel => {
-//     //   if (wheel instanceof THREE.Mesh) { // Ensure it's a Mesh
-//     //     wheel.rotation.y = angle * Math.PI / 180; // Adjust rotation
-//     //   }
-//     // });
-//     for (let i = 0; i < 2; i++) {
-//       console.log("toe is being adjusted");
-//       console.log("node", event.target.value);
-//       this.wheels[0].rotation.y = angle * Math.PI / 180; // Adjust front wheels only
-//       this.wheels[1].rotation.y = -angle * Math.PI / 180;
-//       this.updateToeLines(i);
-//     }
-//   }
-
-//   // updateCamberLines(index: number) {
-//   //   const wheel = this.wheels[index];
-//   //   const angle = wheel.rotation.z; // The current camber rotation of the wheel
-
-//   //   // Starting point at the center of the wheel
-//   //   const startPoint = new THREE.Vector3(wheel.position.x, wheel.position.y, wheel.position.z);
-
-//   //   // Calculating the end point for the camber line
-//   //   // Differentiating between left (index 0) and right (index 1) wheels
-//   //   let xOffset = Math.cos(angle) * 1; // Basic cosine adjustment
-//   //   if (index === 1) { // If it's the right wheel, mirror the direction
-//   //     xOffset = -xOffset; // Reverse the direction for the right wheel
-//   //   }
-
-//   //   const endPoint = new THREE.Vector3(
-//   //     startPoint.x + xOffset, // Adjust x based on camber angle and wheel side
-//   //     wheel.position.y + 4,   // Slightly above the wheel
-//   //     wheel.position.z        // No z-axis change
-//   //   );
-
-//   //   // Update the line geometry
-//   //   this.camberLines[index].geometry.setFromPoints([startPoint, endPoint]);
-//   //   this.camberLines[index].geometry.computeBoundingSphere();
-//   // }
-
-
-
-
-
-//   // updateToeLines(index: number) {
-//   //   const wheel = this.wheels[index];
-//   //   const angle = wheel.rotation.y;  // This is the toe angle adjustment
-
-//   //   // Calculate endpoints based on the angle
-//   //   // This keeps the line length constant while changing the angle
-//   //   const startPoint = new THREE.Vector3(wheel.position.x, wheel.position.y, wheel.position.z);
-//   //   const endPoint = new THREE.Vector3(
-//   //     wheel.position.x + 4 * Math.sin(angle), // Adjust x-coordinate based on the sine of the angle
-//   //     wheel.position.y,
-//   //     wheel.position.z + 4 * Math.cos(angle)  // Adjust z-coordinate based on the cosine of the angle
-//   //   );
-
-//   //   // Update the line geometry to reflect this new position
-//   //   this.toeLines[index].geometry.setFromPoints([startPoint, endPoint]);
-//   //   this.toeLines[index].geometry.computeBoundingSphere();
-//   // }
-
-
-//   // Handlers for camber and toe adjustments, update functions for dynamic lines
-//   // Ensure these are implemented similarly to how they were when the setup was working
-
-// }
-
