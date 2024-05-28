@@ -549,6 +549,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
 
   // deals with passenger side for total toe, the passenger side toe move opposite of the driver side toe
 updateWheelRotation() {
+  
   const radians = (degrees: number) => degrees * Math.PI / 180;
   let SAI = radians(this.sAI);  // Same Steering Axis Inclination for both sides
   let caster = radians(this.fROffsetXRotation);  // Different caster offset for passenger
