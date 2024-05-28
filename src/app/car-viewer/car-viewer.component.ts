@@ -347,6 +347,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     const element = event.target as HTMLInputElement;
     const angle = parseFloat(element.value);
     this.camberAngle = angle;
+    this.driverCamberAngle = angle;
     this.updateWheelRotation();
     this.changeDriver();
     this.updateStatus();
@@ -387,7 +388,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
 
   onDriverCamberChange(event: any) {
     const value = parseFloat(event.target.value);
-    this.camberAngle = value;
+    this.driverCamberAngle = value;
     this.changeDriver();
     this.updateStatus();
     // this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
@@ -428,7 +429,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
             let initialZ = -11; // Initial Z when Y (camber) is 0
 
                 // Calculate changes based on current camber angle
-            let camberChangeY = this.camberAngle;
+            let camberChangeY = this.driverCamberAngle;
   
             // play with values to get a more realistic effect, these are approx and in reality there shouldn't be a different rate of change based on if camber is going + or -
             // Positive Camber Changes
@@ -446,7 +447,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
             // X-axis: For every degree decrease in Y, X changes by approximately -0.16 degrees.
             // Z-axis: For every degree decrease in Y, Z changes by approximately +0.04 degrees.
             console.log("lastCamberAngleD", this.lastCamberAngleD);
-            console.log("this.camberAngle", this.camberAngle);
+            console.log("this.camberAngle", this.driverCamberAngle);
             console.log("camberChangeY", camberChangeY);
             console.log("at adjust");
             let changeX = camberChangeY * 0.180; // Derived rate for X
@@ -466,7 +467,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
 
                 // Adjust wheel rotations based on calculated changes
                 wheel.rotation.x = radians(initialX + changeX);
-                wheel.rotation.y = radians(this.camberAngle) + totalDynamicCamber;
+                wheel.rotation.y = radians(this.driverCamberAngle) + totalDynamicCamber;
                 wheel.rotation.z = radians(initialZ + changeZ) + toeAngleR;
 
 
@@ -586,16 +587,31 @@ updateTurnAngle() {
     if (wheel.name === this.passengerWheel) {
       let manualOffsetZ = this.fROffsetTOE * Math.PI / 180; // Example adjustment
       let manualOffsetY = radians(this.fROffsetCAMBER); // Example adjustment
-      
+      let camberChangeY = this.camberAngle;
+      //////////////////
+      let initialX = -30;
+      let initialZ = -11; // Initial Z when Y (camber) is 0
+      /////////////////
       let toeAngleR = radians(this.turnAngle);
       // Calculate camber gain from SAI and toe
       let camberGainFromSAI = Math.sin(SAI) * Math.tan(toeAngleR);
       let camberGainFromCaster = Math.sin(caster) * Math.sin(toeAngleR);
       let totalDynamicCamber = camberGainFromSAI + camberGainFromCaster;
 
+
+      let changeX = camberChangeY * 0.192; // Derived rate for X
+      let changeZ = 0;
+      if(camberChangeY > 0){
+        changeZ = camberChangeY * -0.04; // Derived rate for Z if increasing Y, should be positive if moving in opposite direction
+      }
+      else{
+        changeZ = camberChangeY * 0.04; // Derived rate for Z if increasing Y, should be positive if moving in opposite direction
+      }
       // Apply the calculated camber and toe angles
-      wheel.rotation.y = radians(-this.camberAngle) + totalDynamicCamber + manualOffsetY; // Inverse camber angle for passenger wheel
-      wheel.rotation.z = -this.turnAngle * Math.PI / 180 + manualOffsetZ;
+      wheel.rotation.x = radians(initialX + changeX);
+      wheel.rotation.y = radians(-camberChangeY) + totalDynamicCamber + manualOffsetY; // Inverse camber angle for passenger wheel
+      // wheel.rotation.y = radians(-this.camberAngle) + totalDynamicCamber + manualOffsetY; // Inverse camber angle for passenger wheel
+      wheel.rotation.z = (-this.turnAngle * Math.PI / 180 + manualOffsetZ) + radians(initialZ + changeZ) ;
     } 
     // this.updateLabelVals(wheel);
   });
