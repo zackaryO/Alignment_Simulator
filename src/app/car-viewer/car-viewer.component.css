@@ -31,10 +31,10 @@
 
 .controls {
     background-color: #f8f9fa;
-    padding: 10px;
+    padding: 5px;
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* More responsive grid */
-    gap: 5px; /* Reduced gap */
+    gap: 3px; /* Reduced gap */
     border-top: 1px solid #dee2e6;
 }
 
@@ -59,7 +59,7 @@ button:hover {
 }
 
 label {
-    margin: 5px;
+    margin: 3px;
     font-weight: bold;
     color: #333;
 }

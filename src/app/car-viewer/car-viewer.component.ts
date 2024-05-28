@@ -27,8 +27,8 @@ export class CarViewerComponent implements OnInit {
   angleToCalibrateLines: number = 30;
   casterAngleCalibrated: number = this.casterAngle + this.angleToCalibrateLines; // calibrated to align with green axis line
   fROffsetTOE = 9;
-  fROffsetCAMBER = 2;
-  fROffsetXRotation = 20 + this.casterAngle; // add desired caster angle
+  fROffsetCAMBER = 3.2;
+  fROffsetXRotation = 25 + this.casterAngle; // add desired caster angle
   sAI = 10;
   fLOffsetTOE = -11;
   fLOffsetCAMBER = 0;
@@ -61,7 +61,7 @@ export class CarViewerComponent implements OnInit {
   //Torus002_14 and Object_20 are the tire
   //Circle012_13 and Object_18 are the caliper
   //sus_up004_6 is a pin? same with Bone003_7 and Object_9
-  //Cylinder011_2 is the upper control arm X:-96`, Y:-83`, Z:-18`
+  //Cylinder011_2 is the upper control arm X:-96`, Y:-83`, Z:-18
   // Object_6 is a better upper control arm
   driverWheelOuter = 'wheelhub_17';//outer wheel for toe
   driverWheelOuterCAM = 'Armature005_26';//outer wheel for cam
@@ -85,15 +85,16 @@ export class CarViewerComponent implements OnInit {
     this.animate();
     this.orbitControls = new OrbitControls(this.camera, this.renderer.domElement);
     this.updateStatus();
+    
   }
 
   loadCarModel() {
     const loader = new GLTFLoader();
-    // const modelPath = '/Alignment_Simulator/assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-    // const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene.gltf';
+    const modelPath = '/Alignment_Simulator/assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
+    const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene.gltf';
     // for local host
-    const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-    const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
+    // const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
+    // const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
 
     loader.load(modelPath, (gltf) => {
       const carModel = gltf.scene;
@@ -109,14 +110,14 @@ export class CarViewerComponent implements OnInit {
           // Manually set the offset here
           if (node.name === this.passengerWheel) {
             // Adjust the Z-axis rotation to visually appear as zero
-            node.rotation.z = this.fROffsetTOE * Math.PI / 180; // Example adjustment
-            node.rotation.y = this.fROffsetCAMBER * Math.PI / 180; // Example adjustment
-            node.rotation.x = this.fROffsetXRotation * Math.PI / 180; // Example adjustment
+            node.rotation.z = this.fROffsetTOE * Math.PI / 180; 
+            node.rotation.y = this.fROffsetCAMBER * Math.PI / 180; 
+            node.rotation.x = this.fROffsetXRotation * Math.PI / 180; 
           } else if (node.name === this.driverWheel) {
             // Adjust the Z-axis rotation to visually appear as zero
-            node.rotation.z = this.fLOffsetTOE * Math.PI / 180; // Example adjustment
-            node.rotation.y = this.fLOffsetCAMBER * Math.PI / 180; // Example adjustment
-            node.rotation.x = (this.xAngleRotationD/180) + (this.fLOffsetXRotation - this.casterAngle) * Math.PI / 180; // Example adjustment
+            node.rotation.z = this.fLOffsetTOE * Math.PI / 180; 
+            node.rotation.y = this.fLOffsetCAMBER * Math.PI / 180; 
+            node.rotation.x = (this.xAngleRotationD/180) + (this.fLOffsetXRotation - this.casterAngle) * Math.PI / 180; 
           }
           foundWheels++;
 
@@ -129,24 +130,24 @@ export class CarViewerComponent implements OnInit {
           controls.showY = false;
           controls.showZ = false;
 
-          controls.addEventListener('objectChange', () => {
-            this.updateLabel(node.userData['label'], node, node.name); // Update label on object change
+          // controls.addEventListener('objectChange', () => {
+          //   this.updateLabel(node.userData['label'], node, node.name); // Update label on object change
               
-          });
+          // });
 
           controls.addEventListener('mouseDown', () => {
             this.orbitControls.enabled = false;
           });
-          controls.addEventListener('mouseUp', () => {
-            this.orbitControls.enabled = true;
-            this.updateLabel(node.userData['label'], node, node.name); // Final update on mouse up
-          });
+          // controls.addEventListener('mouseUp', () => {
+          //   this.orbitControls.enabled = true;
+          //   this.updateLabel(node.userData['label'], node, node.name); // Final update on mouse up
+          // });
 
-          // Create labels
-          const labelPosition = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld).add(new THREE.Vector3(0, 2, 0));
-          const label = this.createLabel(node.name, 'X: 0°, Y(camber): 0°, Z(toe): 0°', labelPosition);
-          node.userData['label'] = label;
-          this.scene.add(label);
+          // // Create labels
+          // const labelPosition = new THREE.Vector3().setFromMatrixPosition(node.matrixWorld).add(new THREE.Vector3(0, 2, 0));
+          // const label = this.createLabel(node.name, 'X: 0°, Y(camber): 0°, Z(toe): 0°', labelPosition);
+          // node.userData['label'] = label;
+          // this.scene.add(label);
         }
       });
 
@@ -161,6 +162,7 @@ export class CarViewerComponent implements OnInit {
 
       carModel.scale.set(1.5, 1.5, 1.5);
       carModel.position.set(0, -0.9, -2.1);
+      
 
     });
 
@@ -266,31 +268,60 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     camberLine.rotation.x = Math.PI / 2.22 ;  // Rotate to align vertically
     }
     else{
-        camberLine.rotation.x = Math.PI / -2.22 - (this.angleToCalibrateLines/180);  // Rotate to align vertically
-      }
+      camberLine.rotation.x = (Math.PI / -2.22 + (this.casterAngle) - (this.angleToCalibrateLines / 180));  // Rotate to align vertically
+    }
     camberLine.position.y += lineLength / -120;  
     wheel.add(camberLine);  // Parent to the wheel for correct relative position
 
-    // CASTER Line (Vertical)
+  // CASTER Line (Vertical)
+  if (wheel.name === this.passengerWheel) {
+        const casterLineMaterial = new THREE.MeshBasicMaterial({ color: 0x32a852 });
+    const casterLineGeometry = new THREE.CylinderGeometry(radius, radius, lineLength, radialSegments);
+    const casterLine = new THREE.Mesh(casterLineGeometry, casterLineMaterial);
+    casterLine.rotation.x = Math.PI / 2;  // Rotate to align vertically
+    casterLine.position.y += lineLength / -120;
+    wheel.add(casterLine);  // Parent to the wheel for correct relative position
+    this.scene.add(casterLine);
+    casterLine.rotation.x = (this.fLOffsetXRotation + 30) * Math.PI / 180;
+    casterLine.rotation.z = 2 * Math.PI / 180;
+    casterLine.position.set(- 1.22, -0.3, 0.08); // Position onto the wheel (lateral position fron vehicle center line, height, position longitudinal)
+    casterLine.scale.set(1.5, 1.5, 1.5);
+    casterLine.rotation.y = -90;
+    wheel.position.set(0, 0, 0);
+  }
+  else { // driver side
     const casterLineMaterial = new THREE.MeshBasicMaterial({ color: 0x32a852 });
     const casterLineGeometry = new THREE.CylinderGeometry(radius, radius, lineLength, radialSegments);
     const casterLine = new THREE.Mesh(casterLineGeometry, casterLineMaterial);
     casterLine.rotation.x = Math.PI / 2;  // Rotate to align vertically
-    casterLine.position.y += lineLength / -120;  
+    casterLine.position.y += lineLength / -120;
     wheel.add(casterLine);  // Parent to the wheel for correct relative position
     this.scene.add(casterLine);
-    casterLine.rotation.x = (this.fLOffsetXRotation + 30) * Math.PI / 180; 
-    casterLine.rotation.z = 2 * Math.PI / 180; 
-    casterLine.position.set(1.25, -0.3, 0); // Position onto the wheel (lateral position fron vehicle center line, height, position longitudinal)
+    casterLine.rotation.x = (this.fLOffsetXRotation + 30) * Math.PI / 180;
+    casterLine.rotation.z = 2 * Math.PI / 180;
+    casterLine.position.set(1.22, -0.3, 0); // Position onto the wheel (lateral position fron vehicle center line, height, position longitudinal)
     casterLine.scale.set(1.5, 1.5, 1.5);
-    // Toe Line (Horizontal)
+    casterLine.rotation.y = -90;
+
+  }
+  // Toe Line (Horizontal)
+  if (wheel.name === this.passengerWheel) {
+    const toeLineMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
+    const toeLineGeometry = new THREE.CylinderGeometry(radius, radius, lineLength, radialSegments);
+    const toeLine = new THREE.Mesh(toeLineGeometry, toeLineMaterial);
+    toeLine.rotation.x = -8 * Math.PI / 180;  // Rotate to align horizontally
+    toeLine.position.y += lineLength / -3;  // Position halfway along the z-axis
+    toeLine.position.z = 0.08;
+    wheel.add(toeLine);  // Parent to the wheel for correct relative position
+  }
+  else {
     const toeLineMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
     const toeLineGeometry = new THREE.CylinderGeometry(radius, radius, lineLength, radialSegments);
     const toeLine = new THREE.Mesh(toeLineGeometry, toeLineMaterial);
     toeLine.rotation.y = Math.PI / 2;  // Rotate to align horizontally
-    toeLine.position.y += lineLength /-3;  // Position halfway along the z-axis
+    toeLine.position.y += lineLength / -3;  // Position halfway along the z-axis
     wheel.add(toeLine);  // Parent to the wheel for correct relative position
-
+  }
     // this.camberLines[index] = camberLine;
     // this.toeLines[index] = toeLine;
     // this.casterLines[index] = casterLine;
@@ -537,7 +568,7 @@ updateWheelRotation() {
       wheel.rotation.y = radians(-this.camberAngle) + totalDynamicCamber + manualOffsetY; // Inverse camber angle for passenger wheel
       wheel.rotation.z = this.toeAngle * Math.PI / 180 + manualOffsetZ;   // Adjusting for toe and manual offset
     } 
-    this.updateLabelVals(wheel);
+    // this.updateLabelVals(wheel);
   });
 
   this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
@@ -565,7 +596,7 @@ updateTurnAngle() {
       wheel.rotation.y = radians(-this.camberAngle) + totalDynamicCamber + manualOffsetY; // Inverse camber angle for passenger wheel
       wheel.rotation.z = -this.turnAngle * Math.PI / 180 + manualOffsetZ;
     } 
-    this.updateLabelVals(wheel);
+    // this.updateLabelVals(wheel);
   });
 
   this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
@@ -629,7 +660,10 @@ if ((this.driverCamberAngle <= this.maxCamSpec) && (this.driverCamberAngle >= th
         pullDirectionStatus = '<span class="no pull">No pull</span>';
     }
 
-this.statusMessage = `
+  this.statusMessage = `
+    <div class="status-item">
+        <h1>Caster</h1><span>15 degrees </span>
+    </div>
     <div class="status-item">
         <h1>Toe</h1><span>${toeStatus}</span>
     </div>
