@@ -35,6 +35,7 @@ export class CarViewerComponent implements OnInit {
   lastCamberAngleD: number = 0;
   //rotate driverwheel to get axis at 0 degrees
   xAngleRotationD: number = 21.5; 
+  xAngleRotationP: number = 25; 
   fLOffsetXRotation = -43 - this.casterAngle; // add desired caster angle IMPORTANT, if you change this value, you must compensate     camberLine.rotation.x = Math.PI / 2;  // Rotate to align vertically
   driverWheelOuterOff = 90;
   driverWheelOuterOffCam = -90;
@@ -589,7 +590,7 @@ updateTurnAngle() {
       let manualOffsetY = radians(this.fROffsetCAMBER); // Example adjustment
       let camberChangeY = this.camberAngle;
       //////////////////
-      let initialX = -30;
+      // let initialX = 24;
       let initialZ = -11; // Initial Z when Y (camber) is 0
       /////////////////
       let toeAngleR = radians(this.turnAngle);
@@ -608,7 +609,7 @@ updateTurnAngle() {
         changeZ = camberChangeY * 0.04; // Derived rate for Z if increasing Y, should be positive if moving in opposite direction
       }
       // Apply the calculated camber and toe angles
-      wheel.rotation.x = radians(initialX + changeX);
+      wheel.rotation.x = radians(this.xAngleRotationP + changeX);
       wheel.rotation.y = radians(-camberChangeY) + totalDynamicCamber + manualOffsetY; // Inverse camber angle for passenger wheel
       // wheel.rotation.y = radians(-this.camberAngle) + totalDynamicCamber + manualOffsetY; // Inverse camber angle for passenger wheel
       wheel.rotation.z = (-this.turnAngle * Math.PI / 180 + manualOffsetZ) + radians(initialZ + changeZ) ;
