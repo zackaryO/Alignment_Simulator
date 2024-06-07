@@ -21,7 +21,7 @@ export class CarViewerComponent implements OnInit {
   wheels: THREE.Object3D[] = [];
 
   //// Caster ANGLE ////////
-  casterAngle: number = 0; // 0 ==10 caster angle in degrees
+  casterAngle: number = 0 * Math.PI / 180; // 0 ==10 caster angle in degrees -25 is close to actual 0, but not exact
   //////////////////////////
 
   angleToCalibrateLines: number = 30;
@@ -91,11 +91,11 @@ export class CarViewerComponent implements OnInit {
 
   loadCarModel() {
     const loader = new GLTFLoader();
-    const modelPath = '/Alignment_Simulator/assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-    const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene.gltf';
+    // const modelPath = '/Alignment_Simulator/assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
+    // const suspensionModelPath = '/Alignment_Simulator/assets/rigged_suspension/scene.gltf';
     // for local host
-    // const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
-    // const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
+    const modelPath = '../../assets/model/500_followers_milestone_-_mercedes-benz_glc_lp/scene.gltf';
+    const suspensionModelPath = '../../assets/rigged_suspension/scene.gltf';
 
     loader.load(modelPath, (gltf) => {
       const carModel = gltf.scene;
@@ -269,7 +269,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     camberLine.rotation.x = Math.PI / 2.22 ;  // Rotate to align vertically
     }
     else{
-      camberLine.rotation.x = (Math.PI / -2.22 + (this.casterAngle) - (this.angleToCalibrateLines / 180));  // Rotate to align vertically
+      camberLine.rotation.x = (Math.PI / -2.22 + (this.casterAngle) - (this.angleToCalibrateLines / 180) - this.casterAngle);  // Rotate to align vertically
     }
     camberLine.position.y += lineLength / -120;  
     wheel.add(camberLine);  // Parent to the wheel for correct relative position
@@ -283,11 +283,11 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     casterLine.position.y += lineLength / -120;
     wheel.add(casterLine);  // Parent to the wheel for correct relative position
     this.scene.add(casterLine);
-    casterLine.rotation.x = (this.fLOffsetXRotation + 30) * Math.PI / 180;
-    casterLine.rotation.z = 2 * Math.PI / 180;
-    casterLine.position.set(- 1.22, -0.3, 0.08); // Position onto the wheel (lateral position fron vehicle center line, height, position longitudinal)
+    casterLine.rotation.x = ((this.fLOffsetXRotation + 30) * Math.PI / 180) + this.casterAngle;
+    casterLine.rotation.z = -10 * Math.PI / 180;
+    casterLine.position.set(- 1.12, -0.3, 0.08); // Position onto the wheel (lateral position fron vehicle center line, height, position longitudinal)
     casterLine.scale.set(1.5, 1.5, 1.5);
-    casterLine.rotation.y = -90;
+    // casterLine.rotation.y = -10;
     wheel.position.set(0, 0, 0);
   }
   else { // driver side
@@ -298,11 +298,11 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     casterLine.position.y += lineLength / -120;
     wheel.add(casterLine);  // Parent to the wheel for correct relative position
     this.scene.add(casterLine);
-    casterLine.rotation.x = (this.fLOffsetXRotation + 30) * Math.PI / 180;
-    casterLine.rotation.z = 2 * Math.PI / 180;
-    casterLine.position.set(1.22, -0.3, 0); // Position onto the wheel (lateral position fron vehicle center line, height, position longitudinal)
+    casterLine.rotation.x = ((this.fLOffsetXRotation + 30) * Math.PI / 180) - this.casterAngle/2; 
+    casterLine.rotation.z = 10 * Math.PI / 180;
+    casterLine.position.set(1.10, -0.3, 0); // Position onto the wheel (lateral position fron vehicle center line, height, position longitudinal)
     casterLine.scale.set(1.5, 1.5, 1.5);
-    casterLine.rotation.y = -90;
+    // casterLine.rotation.y = -90;
 
   }
   // Toe Line (Horizontal)
@@ -319,7 +319,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     const toeLineMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff });
     const toeLineGeometry = new THREE.CylinderGeometry(radius, radius, lineLength, radialSegments);
     const toeLine = new THREE.Mesh(toeLineGeometry, toeLineMaterial);
-    toeLine.rotation.y = Math.PI / 2;  // Rotate to align horizontally
+    toeLine.rotation.y = Math.PI / 2 + this.casterAngle;  // Rotate to align horizontally
     toeLine.position.y += lineLength / -3;  // Position halfway along the z-axis
     wheel.add(toeLine);  // Parent to the wheel for correct relative position
   }
