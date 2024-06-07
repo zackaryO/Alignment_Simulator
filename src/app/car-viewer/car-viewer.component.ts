@@ -351,7 +351,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     this.driverCamberAngle = angle;
     this.updateWheelRotation();
     this.changeDriver();
-    this.updateStatus();
+    // this.updateStatus();
   }
 
   onToeChange(event: Event) {
@@ -360,7 +360,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     this.toeAngle = angle;
     this.updateWheelRotation();
     this.changeDriver();
-    this.updateStatus();
+    // this.updateStatus();
   }
 
   onDriverToeChange(event: any) {
@@ -384,7 +384,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
     this.turnAngle = angle;
     this.changeDriver();
     this.updateTurnAngle();
-    this.updateStatus();
+    // this.updateStatus();
   }
 
   onDriverCamberChange(event: any) {
