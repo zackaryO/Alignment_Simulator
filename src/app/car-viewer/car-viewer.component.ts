@@ -493,7 +493,7 @@ addAxisLines(wheel: THREE.Object3D, index: number) {
         wheel.rotation.z = radians(this.camberAngle) + manualOffsetZ;
       }
     });
-    this.updateStatus();
+    // this.updateStatus();
     
     this.renderer.render(this.scene, this.currentCamera); // Re-render the scene
 }
