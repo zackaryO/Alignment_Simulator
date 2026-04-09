@@ -5,12 +5,13 @@
   overflow: hidden;
 }
 
+/* --- Status bar (top overlay) --- */
 .status-box {
   color: white;
-  background-color: rgba(0, 0, 0, 0.8);
-  padding: 8px;
-  border-radius: 8px;
-  margin: 10px;
+  background-color: rgba(0, 0, 0, 0.75);
+  padding: 4px 8px;
+  border-radius: 6px;
+  margin: 6px;
   z-index: 10;
   position: absolute;
   top: 0;
@@ -19,43 +20,112 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: space-around;
-  font-size: 14px;
+  font-size: 12px;
+  pointer-events: none;
 }
 
 .status-box h3 {
-  margin: 0 0 2px 0;
-  font-size: 13px;
+  margin: 0;
+  font-size: 11px;
 }
 
+/* --- Legend (positioned below status bar, not overlapping Turn L/R) --- */
+.legend {
+  position: absolute;
+  top: 55px;
+  right: 10px;
+  z-index: 9;
+  background: rgba(0, 0, 0, 0.65);
+  color: white;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 9px;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+
+.legend-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 2px;
+}
+
+/* --- 3D Renderer --- */
 .renderer-container {
-  flex-grow: 1;
-  margin: 5px;
+  flex: 1 1 0;
+  min-height: 0;
   background-color: #eeeeee;
   overflow: hidden;
 }
 
+/* --- Steering Input (own row, visually distinct) --- */
+.steering-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  background: linear-gradient(90deg, rgba(255,193,7,0.12), rgba(255,193,7,0.04));
+  border-top: 2px solid #ffc107;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.steering-row input[type="range"] {
+  flex: 1;
+  margin: 0;
+  height: 22px;
+}
+
+.steering-row label {
+  min-width: 50px;
+  text-align: center;
+}
+
+.steering-label {
+  font-weight: bold;
+  font-size: 12px;
+  color: #856404;
+  white-space: nowrap;
+}
+
+.steering-hint {
+  font-size: 10px;
+  color: #999;
+  white-space: nowrap;
+}
+
+/* --- Alignment controls (3-column grid) --- */
 .controls {
   background-color: #f8f9fa;
-  padding: 8px;
+  padding: 4px 6px;
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 8px;
-  border-top: 1px solid #dee2e6;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 6px;
 }
 
 .control-column {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .column-header {
-  margin: 0 0 4px 0;
-  font-size: 14px;
+  margin: 0 0 2px 0;
+  font-size: 12px;
   color: #333;
   text-align: center;
   border-bottom: 2px solid #007bff;
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 
 .control-item {
@@ -65,18 +135,16 @@
 
 input[type="range"] {
   width: 100%;
-  margin: 3px 0;
+  margin: 1px 0;
+  height: 20px;
 }
 
 label {
-  margin: 2px;
+  margin: 0 2px;
   font-weight: bold;
   color: #333;
-  font-size: 13px;
-}
-
-.button-group {
-  margin-top: 4px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 button {
@@ -84,10 +152,11 @@ button {
   background-color: #007bff;
   color: white;
   border: none;
-  border-radius: 5px;
-  padding: 8px;
-  font-size: 14px;
+  border-radius: 4px;
+  padding: 6px;
+  font-size: 12px;
   width: 100%;
+  margin-top: 2px;
   transition: background-color 0.3s ease;
 }
 
@@ -95,34 +164,138 @@ button:hover {
   background-color: #0056b3;
 }
 
-.computed-values {
+/* --- Footer --- */
+.footer-bar {
   background-color: #e9ecef;
-  padding: 6px 12px;
+  padding: 3px 10px;
   display: flex;
   justify-content: space-around;
-  font-size: 13px;
+  align-items: center;
+  font-size: 11px;
   border-top: 1px solid #dee2e6;
 }
 
 .credits {
-  padding: 4px 8px;
-  background-color: #f8f9fa;
-  border-top: 1px solid #dee2e6;
-  text-align: center;
+  color: #888;
 }
 
+/* ========== MOBILE (phones) ========== */
 @media (max-width: 600px) {
+  .container {
+    overflow-y: auto;
+  }
+
+  .renderer-container {
+    min-height: 45vh;
+    flex: none;
+  }
+
+  /* Status bar: smaller, 2-column grid */
+  .status-box {
+    font-size: 9px;
+    padding: 3px 4px;
+    margin: 4px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px 6px;
+    justify-items: center;
+  }
+
+  .status-box h3 {
+    font-size: 9px;
+  }
+
+  /* Legend: smaller, bottom-right instead of top-right to avoid overlap */
+  .legend {
+    top: auto;
+    bottom: 10px;
+    right: 6px;
+    font-size: 8px;
+    padding: 4px 6px;
+    gap: 1px;
+    opacity: 0.85;
+  }
+
+  .legend-swatch {
+    width: 10px;
+    height: 7px;
+  }
+
+  /* Steering row: stack vertically */
+  .steering-row {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 4px;
+    padding: 6px 8px;
+  }
+
+  .steering-row input[type="range"] {
+    width: 100%;
+    flex: none;
+    height: 28px;
+  }
+
+  .steering-label {
+    width: 100%;
+    text-align: center;
+    font-size: 13px;
+  }
+
+  /* Alignment grid: single column, all stacked */
   .controls {
     grid-template-columns: 1fr;
-  }
-
-  .status-box {
-    flex-direction: column;
-  }
-
-  .computed-values {
-    flex-direction: column;
-    align-items: center;
     gap: 4px;
+    padding: 6px 8px;
+  }
+
+  .column-header {
+    font-size: 13px;
+    padding-bottom: 3px;
+  }
+
+  /* Bigger touch targets */
+  input[type="range"] {
+    height: 28px;
+    margin: 3px 0;
+  }
+
+  label {
+    font-size: 12px;
+    padding: 2px 0;
+  }
+
+  button {
+    padding: 10px;
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  /* Footer */
+  .footer-bar {
+    flex-wrap: wrap;
+    gap: 4px;
+    justify-content: center;
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+
+  .credits {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* ========== TABLET (medium screens) ========== */
+@media (min-width: 601px) and (max-width: 900px) {
+  .status-box {
+    font-size: 10px;
+  }
+
+  .legend {
+    font-size: 9px;
+  }
+
+  input[type="range"] {
+    height: 24px;
   }
 }

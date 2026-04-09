@@ -2,145 +2,163 @@ import * as THREE from 'three';
 
 export class WheelAssembly {
   readonly assembly: THREE.Group;
-  readonly steeringAxisPivot: THREE.Group;
-  readonly steeringPivot: THREE.Group;
+  readonly turnPivot: THREE.Group;
   readonly alignmentPivot: THREE.Group;
   readonly wheelMesh: THREE.Object3D;
   readonly side: 'left' | 'right';
 
+  private _camberDeg = 0;
+  private _toeDeg = 0;
+  private _casterDeg = 0;
+  private _saiDeg = 0;
+  private _turnDeg = 0;
+
   constructor(wheel: THREE.Object3D, carModel: THREE.Object3D, side: 'left' | 'right') {
     this.side = side;
 
-    // Capture the wheel's world transform before detaching
+    // Get wheel's world position for the pivot point
     wheel.updateWorldMatrix(true, false);
     const worldPos = new THREE.Vector3();
-    const worldQuat = new THREE.Quaternion();
-    const worldScale = new THREE.Vector3();
-    wheel.matrixWorld.decompose(worldPos, worldQuat, worldScale);
-
-    // Convert world position to carModel's local space
+    wheel.getWorldPosition(worldPos);
     const localPos = carModel.worldToLocal(worldPos.clone());
 
-    // Detach wheel from its parent
-    wheel.parent?.remove(wheel);
-
-    // Build pivot hierarchy
+    // Build pivot hierarchy and add to carModel FIRST
     this.assembly = new THREE.Group();
     this.assembly.name = `assembly_${side}`;
     this.assembly.position.copy(localPos);
 
-    this.steeringAxisPivot = new THREE.Group();
-    this.steeringAxisPivot.name = `steeringAxis_${side}`;
-
-    this.steeringPivot = new THREE.Group();
-    this.steeringPivot.name = `steering_${side}`;
+    this.turnPivot = new THREE.Group();
+    this.turnPivot.name = `turn_${side}`;
 
     this.alignmentPivot = new THREE.Group();
     this.alignmentPivot.name = `alignment_${side}`;
 
-    // Nest: assembly → steeringAxisPivot → steeringPivot → alignmentPivot → wheel
-    this.assembly.add(this.steeringAxisPivot);
-    this.steeringAxisPivot.add(this.steeringPivot);
-    this.steeringPivot.add(this.alignmentPivot);
+    this.assembly.add(this.turnPivot);
+    this.turnPivot.add(this.alignmentPivot);
+    carModel.add(this.assembly);
 
-    // Counter-rotate wheel mesh to cancel accumulated parent transforms.
-    // The assembly is at the wheel's world position with identity rotation,
-    // so we need the inverse of the world quaternion to restore visual orientation.
-    const inverseWorldQuat = worldQuat.clone().invert();
+    // Update all world matrices so attach() can compute correct local transforms
+    carModel.updateMatrixWorld(true);
 
-    // Also need to account for carModel's world rotation
-    const carWorldQuat = new THREE.Quaternion();
-    carModel.getWorldQuaternion(carWorldQuat);
-    const carInverseQuat = carWorldQuat.clone().invert();
-
-    // The wheel's local quaternion should cancel: carModel rotation + original world rotation
-    // Since assembly is child of carModel, effective world = carModel * assembly * ... * wheel
-    // We want wheel to appear at original worldQuat, so:
-    // carWorldQuat * wheelLocalQuat = worldQuat
-    // wheelLocalQuat = carInverseQuat * worldQuat
-    // But we want identity appearance, so we need inverse of accumulated parent chain
-    wheel.quaternion.copy(carInverseQuat.multiply(worldQuat).invert());
-
-    // Reset position to center of pivot and preserve scale
-    wheel.position.set(0, 0, 0);
-    wheel.scale.copy(worldScale);
-
-    this.alignmentPivot.add(wheel);
+    // Reparent wheel preserving its world transform
+    this.alignmentPivot.attach(wheel);
     this.wheelMesh = wheel;
 
-    // Add assembly to carModel
-    carModel.add(this.assembly);
+    // The wheel mesh now has a local rotation that includes:
+    //   X rotation: the wheel's spin axis orientation — KEEP THIS
+    //   Y rotation: residual toe from the model — REMOVE THIS
+    //   Z rotation: residual camber from the model — REMOVE THIS
+    // If Z rotation > 90°, the wheel is mirrored (negative X scale from the
+    // GLTF parent chain was absorbed into rotation by attach()). Restore the
+    // mirror as a negative X scale instead, which keeps the wheel facing
+    // outward without polluting the rotation.
+    const euler = new THREE.Euler().copy(wheel.rotation);
+
+    if (Math.abs(euler.z) > Math.PI / 2) {
+      // The ~180° Z rotation is the mathematical representation of the mirror.
+      // Replace it: use negative X scale for the visual mirror, and strip the
+      // Z rotation. We need to adjust X rotation too since the mirror changes
+      // the effective spin axis direction.
+      wheel.scale.x *= -1;
+      // With the mirror on X, the effective X rotation inverts sign
+      euler.x = Math.PI - euler.x;
+    }
+
+    // Strip residual toe (Y) and camber (Z), keep only spin axis (X)
+    wheel.rotation.set(euler.x, 0, 0, euler.order);
+
+    console.log(`[${side}] stripped Y=${THREE.MathUtils.radToDeg(euler.y).toFixed(1)}° Z=${THREE.MathUtils.radToDeg(euler.z).toFixed(1)}° — kept X=${THREE.MathUtils.radToDeg(euler.x).toFixed(1)}°`);
   }
 
   setCaster(degrees: number): void {
-    this.steeringAxisPivot.rotation.x = THREE.MathUtils.degToRad(degrees);
+    this._casterDeg = degrees;
+    this._updateTurn();
   }
 
   setSAI(degrees: number): void {
-    // SAI tilts the steering axis inward — opposite sign for each side
-    const sign = this.side === 'left' ? 1 : -1;
-    this.steeringAxisPivot.rotation.z = sign * THREE.MathUtils.degToRad(degrees);
+    this._saiDeg = degrees;
+    this._updateTurn();
   }
 
   setTurnAngle(degrees: number): void {
-    this.steeringPivot.rotation.y = THREE.MathUtils.degToRad(degrees);
+    this._turnDeg = degrees;
+    this._updateTurn();
   }
 
   setCamber(degrees: number): void {
-    // Positive camber = top of wheel tilts outward
-    const sign = this.side === 'left' ? -1 : 1;
-    this.alignmentPivot.rotation.z = sign * THREE.MathUtils.degToRad(degrees);
+    this._camberDeg = degrees;
+    this._updateAlignment();
   }
 
   setToe(degrees: number): void {
-    // Positive toe value = toe-in (front of wheel points toward centerline)
-    const sign = this.side === 'left' ? 1 : -1;
-    this.alignmentPivot.rotation.y = sign * THREE.MathUtils.degToRad(degrees);
+    this._toeDeg = degrees;
+    this._updateAlignment();
+  }
+
+  private _updateTurn(): void {
+    if (this._turnDeg === 0) {
+      this.turnPivot.quaternion.identity();
+      return;
+    }
+
+    const casterRad = THREE.MathUtils.degToRad(this._casterDeg);
+    const saiRad = THREE.MathUtils.degToRad(this._saiDeg);
+    const saiSign = this.side === 'left' ? -1 : 1;
+
+    const axis = new THREE.Vector3(
+      Math.sin(saiRad) * saiSign,
+      Math.cos(casterRad) * Math.cos(saiRad),
+      -Math.sin(casterRad)
+    ).normalize();
+
+    const turnRad = THREE.MathUtils.degToRad(this._turnDeg);
+    this.turnPivot.quaternion.setFromAxisAngle(axis, turnRad);
   }
 
   /**
-   * Get the effective camber angle in degrees, including dynamic gain
-   * from caster/SAI when the wheel is turned.
+   * Apply camber and toe directly to the alignment pivot.
+   * No baseline subtraction needed — we already stripped the residual
+   * from the wheel mesh itself in the constructor.
    */
+  private _updateAlignment(): void {
+    const camberSign = this.side === 'left' ? -1 : 1;
+    const camberRad = camberSign * THREE.MathUtils.degToRad(this._camberDeg);
+
+    const toeSign = this.side === 'left' ? -1 : 1;
+    const toeRad = toeSign * THREE.MathUtils.degToRad(this._toeDeg);
+
+    this.alignmentPivot.rotation.set(0, toeRad, camberRad);
+  }
+
   getEffectiveCamber(): number {
-    // Extract the effective Z-rotation from the combined world matrix
-    // of all pivots from steeringAxisPivot down to alignmentPivot
-    this.alignmentPivot.updateWorldMatrix(true, false);
-    this.assembly.updateWorldMatrix(true, false);
-
-    // Get the world quaternion of the alignment pivot relative to the assembly
-    const alignWorldQuat = new THREE.Quaternion();
-    this.alignmentPivot.getWorldQuaternion(alignWorldQuat);
+    this.assembly.updateMatrixWorld(true);
 
     const assemblyWorldQuat = new THREE.Quaternion();
     this.assembly.getWorldQuaternion(assemblyWorldQuat);
 
-    // Relative rotation = inverse(assembly) * alignmentWorld
-    const relativeQuat = assemblyWorldQuat.invert().multiply(alignWorldQuat);
-    const euler = new THREE.Euler().setFromQuaternion(relativeQuat, 'YXZ');
+    const alignWorldQuat = new THREE.Quaternion();
+    this.alignmentPivot.getWorldQuaternion(alignWorldQuat);
 
-    const sign = this.side === 'left' ? -1 : 1;
-    return sign * THREE.MathUtils.radToDeg(euler.z);
+    const relQuat = assemblyWorldQuat.clone().invert().multiply(alignWorldQuat);
+    const euler = new THREE.Euler().setFromQuaternion(relQuat, 'XYZ');
+
+    const camberSign = this.side === 'left' ? -1 : 1;
+    return camberSign * THREE.MathUtils.radToDeg(euler.z);
   }
 
-  /**
-   * Get the effective toe angle in degrees, including dynamic changes
-   * from caster/SAI when the wheel is turned.
-   */
   getEffectiveToe(): number {
-    this.alignmentPivot.updateWorldMatrix(true, false);
-    this.assembly.updateWorldMatrix(true, false);
-
-    const alignWorldQuat = new THREE.Quaternion();
-    this.alignmentPivot.getWorldQuaternion(alignWorldQuat);
+    this.assembly.updateMatrixWorld(true);
 
     const assemblyWorldQuat = new THREE.Quaternion();
     this.assembly.getWorldQuaternion(assemblyWorldQuat);
 
-    const relativeQuat = assemblyWorldQuat.invert().multiply(alignWorldQuat);
-    const euler = new THREE.Euler().setFromQuaternion(relativeQuat, 'YXZ');
+    const alignWorldQuat = new THREE.Quaternion();
+    this.alignmentPivot.getWorldQuaternion(alignWorldQuat);
 
-    const sign = this.side === 'left' ? 1 : -1;
-    return sign * THREE.MathUtils.radToDeg(euler.y);
+    const relQuat = assemblyWorldQuat.clone().invert().multiply(alignWorldQuat);
+    const euler = new THREE.Euler().setFromQuaternion(relQuat, 'XYZ');
+
+    const toeSign = this.side === 'left' ? -1 : 1;
+    return toeSign * THREE.MathUtils.radToDeg(euler.y);
   }
 }

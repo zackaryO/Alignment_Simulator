@@ -1,8 +1,31 @@
 <div class="container">
   <div class="status-box" *ngIf="statusMessage" [innerHTML]="statusMessage"></div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><span class="legend-swatch" style="background:#ff0000;"></span> Camber Axis</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#32a852;"></span> Steering Axis (Caster + SAI)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#0000ff;"></span> Toe Line</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#4488ff; border-radius:50%;"></span> Toe Tip Tracer</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#ff8800; border-radius:50%;"></span> Inside Wheel (Ackermann)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#888; height:2px; margin-top:5px; border-top:2px dashed #888;"></span> Reference Arc (zero geometry)</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:rgba(255,136,34,0.5);"></span> Caster/SAI Deviation</div>
+  </div>
+
   <div #rendererContainer class="renderer-container"></div>
+
+  <!-- Steering Input — on top, visually separate from alignment settings -->
+  <div class="steering-row">
+    <span class="steering-label">Steering Input</span>
+    <span class="steering-hint">L &larr;</span>
+    <input type="range" id="turn" min="-40" max="40" step="0.5"
+           [disabled]="!modelLoaded" [(ngModel)]="turnAngle" (input)="onAngleChange()">
+    <span class="steering-hint">&rarr; R</span>
+    <label for="turn">{{ formatDegrees(turnAngle) }}</label>
+  </div>
+
+  <!-- Static Alignment Controls -->
   <div class="controls">
-    <!-- Left Wheel -->
     <div class="control-column">
       <h3 class="column-header">Left Wheel</h3>
       <div class="control-item">
@@ -10,24 +33,18 @@
         <input type="range" id="leftCamber" min="-5" max="5" step="0.1"
                [disabled]="!modelLoaded" [(ngModel)]="leftCamber" (input)="onAngleChange()">
       </div>
-      <div class="control-item">
-        <label for="leftToe">Toe: {{ formatDegrees(leftToe) }}</label>
-        <input type="range" id="leftToe" min="-3" max="3" step="0.1"
-               [disabled]="!modelLoaded" [(ngModel)]="leftToe" (input)="onAngleChange()">
-      </div>
     </div>
 
-    <!-- Shared Controls -->
     <div class="control-column">
-      <h3 class="column-header">Shared</h3>
+      <h3 class="column-header">Alignment</h3>
       <div class="control-item">
-        <label for="turn">Turn: {{ formatDegrees(turnAngle) }}</label>
-        <input type="range" id="turn" min="-40" max="40" step="0.5"
-               [disabled]="!modelLoaded" [(ngModel)]="turnAngle" (input)="onAngleChange()">
+        <label for="totalToe">Total Toe: {{ formatDegrees(totalToeSlider) }} <small>(+ in / - out)</small></label>
+        <input type="range" id="totalToe" min="-3" max="3" step="0.1"
+               [disabled]="!modelLoaded" [(ngModel)]="totalToeSlider" (input)="onAngleChange()">
       </div>
       <div class="control-item">
         <label for="caster">Caster: {{ formatDegrees(casterAngle) }}</label>
-        <input type="range" id="caster" min="0" max="10" step="0.5"
+        <input type="range" id="caster" min="0" max="60" step="0.5"
                [disabled]="!modelLoaded" [(ngModel)]="casterAngle" (input)="onAngleChange()">
       </div>
       <div class="control-item">
@@ -35,12 +52,9 @@
         <input type="range" id="sai" min="0" max="20" step="0.5"
                [disabled]="!modelLoaded" [(ngModel)]="saiAngle" (input)="onAngleChange()">
       </div>
-      <div class="button-group">
-        <button (click)="resetAngles()">Reset All</button>
-      </div>
+      <button (click)="resetAngles()">Reset All</button>
     </div>
 
-    <!-- Right Wheel -->
     <div class="control-column">
       <h3 class="column-header">Right Wheel</h3>
       <div class="control-item">
@@ -48,23 +62,13 @@
         <input type="range" id="rightCamber" min="-5" max="5" step="0.1"
                [disabled]="!modelLoaded" [(ngModel)]="rightCamber" (input)="onAngleChange()">
       </div>
-      <div class="control-item">
-        <label for="rightToe">Toe: {{ formatDegrees(rightToe) }}</label>
-        <input type="range" id="rightToe" min="-3" max="3" step="0.1"
-               [disabled]="!modelLoaded" [(ngModel)]="rightToe" (input)="onAngleChange()">
-      </div>
     </div>
   </div>
 
-  <!-- Computed Values -->
-  <div class="computed-values">
+  <!-- Computed Values + Credits -->
+  <div class="footer-bar">
     <span><b>Cross Camber:</b> {{ formatDegrees(crossCamber) }}</span>
     <span><b>Total Toe:</b> {{ formatDegrees(totalToe) }}</span>
-  </div>
-
-  <div class="credits">
-    <small><b>Created By:</b> Zack Otterstrom.</small>
-    <br>
-    <small><b>Using:</b> 3-D model created by KrStolorz (Krzysztof Stolorz) (https://sketchfab.com/KrStolorz)</small>
+    <span class="credits"><small>Created by Zack Otterstrom | 3D model by KrStolorz</small></span>
   </div>
 </div>
