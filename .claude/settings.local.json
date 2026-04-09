@@ -8,7 +8,8 @@
       "Bash(taskkill //F //IM node.exe)",
       "Bash(curl -s http://localhost:4200/Alignment_Simulator/)",
       "Bash(curl -s http://localhost:4200/)",
-      "Bash(curl -s http://localhost:4200/main.js)"
+      "Bash(curl -s http://localhost:4200/main.js)",
+      "Bash(gh api:*)"
     ]
   }
 }
