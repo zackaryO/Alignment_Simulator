@@ -1,80 +1,128 @@
 .container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh; /* Use the full height of the viewport */
-    overflow: hidden; /* Prevents scrolling */
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .status-box {
-    color: white;
-    background-color: rgba(0, 0, 0, 0.8);
-    padding: 8px;
-    border-radius: 8px;
-    margin: 10px;
-    z-index: 10;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0; /* Stretch across the top */
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-around; /* Evenly space content across the top */
-    font-size: 14px; /* Adjust font size */
+  color: white;
+  background-color: rgba(0, 0, 0, 0.8);
+  padding: 8px;
+  border-radius: 8px;
+  margin: 10px;
+  z-index: 10;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  font-size: 14px;
+}
+
+.status-box h3 {
+  margin: 0 0 2px 0;
+  font-size: 13px;
 }
 
 .renderer-container {
-    flex-grow: 1; /* Allow this container to grow to fill available space */
-    margin: 5px;
-    background-color: #eeeeee;
-    overflow: hidden; /* Hide any overflow */
+  flex-grow: 1;
+  margin: 5px;
+  background-color: #eeeeee;
+  overflow: hidden;
 }
 
 .controls {
-    background-color: #f8f9fa;
-    padding: 5px;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); /* More responsive grid */
-    gap: 3px; /* Reduced gap */
-    border-top: 1px solid #dee2e6;
+  background-color: #f8f9fa;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  border-top: 1px solid #dee2e6;
 }
 
-input[type="range"], button {
-    width: 100%; /* Ensure full width usage */
-    margin: 5px 0;
+.control-column {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-button {
-    cursor: pointer;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    padding: 8px; /* Reduce padding slightly */
-    font-size: 14px; /* Adjust font size for buttons */
-    transition: background-color 0.3s ease;
+.column-header {
+  margin: 0 0 4px 0;
+  font-size: 14px;
+  color: #333;
+  text-align: center;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 4px;
 }
 
-button:hover {
-    background-color: #0056b3;
+.control-item {
+  display: flex;
+  flex-direction: column;
+}
+
+input[type="range"] {
+  width: 100%;
+  margin: 3px 0;
 }
 
 label {
-    margin: 3px;
-    font-weight: bold;
-    color: #333;
+  margin: 2px;
+  font-weight: bold;
+  color: #333;
+  font-size: 13px;
 }
 
-span {
-    color: #555;
+.button-group {
+  margin-top: 4px;
+}
+
+button {
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 8px;
+  font-size: 14px;
+  width: 100%;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.computed-values {
+  background-color: #e9ecef;
+  padding: 6px 12px;
+  display: flex;
+  justify-content: space-around;
+  font-size: 13px;
+  border-top: 1px solid #dee2e6;
+}
+
+.credits {
+  padding: 4px 8px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+  text-align: center;
 }
 
 @media (max-width: 600px) {
-    .status-box {
-        flex-direction: column; /* Stack the status items vertically on smaller screens */
-    }
+  .controls {
+    grid-template-columns: 1fr;
+  }
 
-    .status-item {
-        justify-content: center; /* Center the items within each status box */
-        margin-right: 0; /* Remove right margin on smaller screens */
-    }
+  .status-box {
+    flex-direction: column;
+  }
+
+  .computed-values {
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
 }
