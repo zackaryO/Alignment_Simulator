@@ -60,12 +60,15 @@
   border-bottom: 2px solid #ffc107;
 }
 
-/* ===== Selected error description ===== */
+/* ===== Selected error description =====
+   Capped tightly so it can never push the bottom action row (Clear /
+   Diagnostic Chart) off-screen on shorter viewports. Long descriptions
+   scroll inside this fixed envelope. */
 .error-detail {
   font-size: 11px;
-  line-height: 1.4;
+  line-height: 1.35;
   color: #e9ecef;
-  max-height: 22vh;
+  max-height: 72px;
   overflow-y: auto;
 }
 
@@ -108,7 +111,10 @@
 .render-area {
   flex: 1 1 auto;
   position: relative;
-  min-height: 220px;
+  /* min-height: 0 lets the renderer shrink so the bottom action row
+     (Clear / Diagnostic Chart) is never pushed off-screen on short
+     viewports when an error description is shown. */
+  min-height: 0;
   display: flex;
   overflow: hidden;
 }
@@ -494,7 +500,8 @@ label {
   .geo-slider label { font-size: 12px; }
   .reset-btn.compact { flex: 0 0 auto; width: auto; padding: 8px 16px; }
 
-  .render-area { min-height: 320px; }
+  /* On larger viewports the renderer is allowed to grow but never
+     forced to a min-height — the action row at the bottom always wins. */
   .legend { font-size: 11px; padding: 8px 12px; max-width: 30%; }
 
   .error-row-label { width: 70px; font-size: 12px; }
@@ -504,7 +511,6 @@ label {
 }
 
 @media (min-width: 1280px) {
-  .render-area { min-height: 360px; }
   .error-grid { padding: 8px 16px 4px; }
   .error-actions { padding: 4px 16px 10px; }
   .info-panel { padding: 12px 20px; }

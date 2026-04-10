@@ -43,6 +43,12 @@
       <div class="legend-item"><span class="legend-swatch dot" style="background:#ff8800;"></span> Inside Wheel (Ackermann)</div>
       <div class="legend-item"><span class="legend-swatch dashed"></span> Reference (zero geometry)</div>
       <div class="legend-item"><span class="legend-swatch" style="background:rgba(255,136,34,0.5);"></span> Caster/SAI Deviation</div>
+      <div class="legend-item" *ngIf="mode === 'error' && selectedError">
+        <span class="legend-swatch dashed"></span> Ideal axis (error mode)
+      </div>
+      <div class="legend-item" *ngIf="mode === 'error' && selectedError">
+        <span class="legend-swatch" style="background:rgba(255,80,80,0.4);"></span> Deviation from spec
+      </div>
     </div>
   </div>
 

@@ -37,7 +37,8 @@ import { WheelAssembly } from './wheel-assembly';
 import {
   createAxisLines, updateCasterLine, createReferenceArc, createSpindleReferenceArc,
   createRoadSurfacePlane, DeviationRibbon, SpindleDeviationRibbon,
-  JackingIndicator, AxisLines, ToeTracer, TOE_LINE_LENGTH, SPINDLE_LINE_LENGTH
+  JackingIndicator, AxisLines, ToeTracer, ErrorIndicator,
+  TOE_LINE_LENGTH, SPINDLE_LINE_LENGTH
 } from './axis-lines';
 import {
   AlignmentError, AngleCategory, getErrorsByAngle,
@@ -105,6 +106,18 @@ export class CarViewerComponent implements OnInit {
   leftJacking: JackingIndicator | null = null;
   /** Vertical bar that grows up/down to show body lift at the right corner. */
   rightJacking: JackingIndicator | null = null;
+  /** Per-error ghost lines + deviation wedges (left wheel). */
+  leftErrorIndicator: ErrorIndicator | null = null;
+  /** Per-error ghost lines + deviation wedges (right wheel). */
+  rightErrorIndicator: ErrorIndicator | null = null;
+  /** Dashed reference arc for the left toe tip — toggled per error category. */
+  leftReferenceArc: THREE.Line | null = null;
+  /** Dashed reference arc for the right toe tip — toggled per error category. */
+  rightReferenceArc: THREE.Line | null = null;
+  /** Dashed reference arc for the left spindle tip — toggled per error category. */
+  leftSpindleReferenceArc: THREE.Line | null = null;
+  /** Dashed reference arc for the right spindle tip — toggled per error category. */
+  rightSpindleReferenceArc: THREE.Line | null = null;
 
   /** Loaded GLTF root node. */
   carModel: THREE.Object3D | null = null;
@@ -319,12 +332,12 @@ export class CarViewerComponent implements OnInit {
         this.rightAxisLines = createAxisLines(this.rightWheelAssembly);
 
         // Reference arcs (toe tip path)
-        createReferenceArc(this.leftWheelAssembly, TOE_LINE_LENGTH, this.scene);
-        createReferenceArc(this.rightWheelAssembly, TOE_LINE_LENGTH, this.scene);
+        this.leftReferenceArc = createReferenceArc(this.leftWheelAssembly, TOE_LINE_LENGTH, this.scene);
+        this.rightReferenceArc = createReferenceArc(this.rightWheelAssembly, TOE_LINE_LENGTH, this.scene);
 
         // Spindle reference arcs
-        createSpindleReferenceArc(this.leftWheelAssembly, SPINDLE_LINE_LENGTH);
-        createSpindleReferenceArc(this.rightWheelAssembly, SPINDLE_LINE_LENGTH);
+        this.leftSpindleReferenceArc = createSpindleReferenceArc(this.leftWheelAssembly, SPINDLE_LINE_LENGTH);
+        this.rightSpindleReferenceArc = createSpindleReferenceArc(this.rightWheelAssembly, SPINDLE_LINE_LENGTH);
 
         // Road surface plane (3D grid at the actual wheel-bottom Y)
         createRoadSurfacePlane(this.scene, this.leftWheelAssembly, this.rightWheelAssembly);
@@ -344,6 +357,10 @@ export class CarViewerComponent implements OnInit {
         // Jacking indicators (body roll bars)
         this.leftJacking = new JackingIndicator(this.leftWheelAssembly);
         this.rightJacking = new JackingIndicator(this.rightWheelAssembly);
+
+        // Per-error ghost lines + deviation wedges (hidden until an error is selected)
+        this.leftErrorIndicator = new ErrorIndicator(this.leftWheelAssembly);
+        this.rightErrorIndicator = new ErrorIndicator(this.rightWheelAssembly);
 
         // Capture wheel assembly REST positions in world space.
         // When carModel rolls/lifts, we'll counter-translate the assemblies
@@ -580,6 +597,7 @@ export class CarViewerComponent implements OnInit {
       // scenario.
       this.resetAngles();
     }
+    this.applyErrorVisuals();
   }
 
   /** Switch between conceptual (body fixed) and actual (body lifts/rolls) rendering. */
@@ -623,12 +641,172 @@ export class CarViewerComponent implements OnInit {
     if (s.caster !== undefined) this.casterAngle = s.caster;
     if (s.sai !== undefined) this.saiAngle = s.sai;
     this.updateAllWheels();
+    this.applyErrorVisuals();
   }
 
   /** Drop the selected error and return everything to factory defaults. */
   clearError() {
     this.selectedError = null;
     this.resetAngles();
+    this.applyErrorVisuals();
+  }
+
+  // -------------------------------------------------------------------------
+  // Error-mode visibility & ghost/wedge indicator logic
+  // -------------------------------------------------------------------------
+
+  /** Factory-default value used as the "ideal" reference for each angle. */
+  private static readonly IDEAL_CAMBER = 0;
+  private static readonly IDEAL_TOE = 0;
+  private static readonly IDEAL_CASTER = 3;
+  private static readonly IDEAL_SAI = 13;
+
+  /**
+   * Drive per-error visibility on the visualization.
+   *
+   * Geometry mode: every axis line, ribbon and reference arc is shown,
+   * and all error-indicator ghosts/wedges are hidden.
+   *
+   * Error mode with no selection: same as geometry mode — the user can
+   * still see the full visualization while they choose a scenario.
+   *
+   * Error mode with a selection: only the axis line(s) and supporting
+   * geometry that are physically affected by the chosen error remain
+   * visible. The matching ghost line + deviation wedge are activated to
+   * make the change unmistakable, and any non-relevant deviation ribbons
+   * / reference arcs are hidden so they don't compete for attention.
+   */
+  private applyErrorVisuals(): void {
+    if (!this.leftAxisLines || !this.rightAxisLines) return;
+
+    // Reset everything to fully visible, then narrow it down below.
+    this._setAllAxisLineVisibility(true);
+    this.leftErrorIndicator?.hideAll();
+    this.rightErrorIndicator?.hideAll();
+
+    if (this.mode !== 'error' || !this.selectedError) return;
+
+    const err = this.selectedError;
+
+    // Determine which sides of the car the error physically touches.
+    let leftAffected = false;
+    let rightAffected = false;
+    if (err.angle === 'Camber') {
+      leftAffected = (err.state.leftCamber ?? 0) !== 0;
+      rightAffected = (err.state.rightCamber ?? 0) !== 0;
+      // Cross-camber sets both — handle the rare "neither set" case by
+      // falling back to whichever side actually differs from spec.
+      if (!leftAffected && !rightAffected) {
+        leftAffected = this.leftCamber !== CarViewerComponent.IDEAL_CAMBER;
+        rightAffected = this.rightCamber !== CarViewerComponent.IDEAL_CAMBER;
+      }
+    } else {
+      // All other categories are symmetric in the error data.
+      leftAffected = true;
+      rightAffected = true;
+    }
+
+    // Hide everything first; we'll re-enable only the relevant parts.
+    this._setAllAxisLineVisibility(false);
+
+    switch (err.angle) {
+      case 'Camber': {
+        if (leftAffected) {
+          this.leftAxisLines.camberLine.visible = true;
+          this.leftErrorIndicator?.showCamber(this.leftCamber, CarViewerComponent.IDEAL_CAMBER);
+        }
+        if (rightAffected) {
+          this.rightAxisLines.camberLine.visible = true;
+          this.rightErrorIndicator?.showCamber(this.rightCamber, CarViewerComponent.IDEAL_CAMBER);
+        }
+        break;
+      }
+      case 'Toe': {
+        this.leftAxisLines.toeLine.visible = true;
+        this.leftAxisLines.toeTipFront.visible = true;
+        this.rightAxisLines.toeLine.visible = true;
+        this.rightAxisLines.toeTipFront.visible = true;
+        this.leftErrorIndicator?.showToe(this.leftToe, CarViewerComponent.IDEAL_TOE);
+        this.rightErrorIndicator?.showToe(this.rightToe, CarViewerComponent.IDEAL_TOE);
+        break;
+      }
+      case 'Caster': {
+        this.leftAxisLines.casterLine.visible = true;
+        this.rightAxisLines.casterLine.visible = true;
+        // Spindle deviation ribbons help visualize how caster changes the
+        // spindle path during steering — keep them on for caster errors.
+        this.leftSpindleRibbon?.setVisible(true);
+        this.rightSpindleRibbon?.setVisible(true);
+        if (this.leftSpindleReferenceArc) this.leftSpindleReferenceArc.visible = true;
+        if (this.rightSpindleReferenceArc) this.rightSpindleReferenceArc.visible = true;
+        this.leftErrorIndicator?.showSteeringAxis(
+          this.casterAngle, this.saiAngle,
+          CarViewerComponent.IDEAL_CASTER, this.saiAngle
+        );
+        this.rightErrorIndicator?.showSteeringAxis(
+          this.casterAngle, this.saiAngle,
+          CarViewerComponent.IDEAL_CASTER, this.saiAngle
+        );
+        break;
+      }
+      case 'SAI': {
+        this.leftAxisLines.casterLine.visible = true;
+        this.rightAxisLines.casterLine.visible = true;
+        this.leftSpindleRibbon?.setVisible(true);
+        this.rightSpindleRibbon?.setVisible(true);
+        if (this.leftSpindleReferenceArc) this.leftSpindleReferenceArc.visible = true;
+        if (this.rightSpindleReferenceArc) this.rightSpindleReferenceArc.visible = true;
+        this.leftErrorIndicator?.showSteeringAxis(
+          this.casterAngle, this.saiAngle,
+          this.casterAngle, CarViewerComponent.IDEAL_SAI
+        );
+        this.rightErrorIndicator?.showSteeringAxis(
+          this.casterAngle, this.saiAngle,
+          this.casterAngle, CarViewerComponent.IDEAL_SAI
+        );
+        break;
+      }
+      case 'ScrubRadius': {
+        // Scrub-radius scenarios don't change any slider in the data, so
+        // there is no deviation to draw — just leave the steering axis
+        // and spindle line visible so the user can see where it meets the
+        // road plane.
+        this.leftAxisLines.casterLine.visible = true;
+        this.rightAxisLines.casterLine.visible = true;
+        this.leftAxisLines.spindleLine.visible = true;
+        this.leftAxisLines.spindleTip.visible = true;
+        this.rightAxisLines.spindleLine.visible = true;
+        this.rightAxisLines.spindleTip.visible = true;
+        break;
+      }
+    }
+  }
+
+  /**
+   * Bulk show/hide every axis line, deviation ribbon, reference arc and
+   * tip sphere across both wheels. Used by {@link applyErrorVisuals} as a
+   * starting point before re-enabling the items relevant to the active
+   * error category.
+   */
+  private _setAllAxisLineVisibility(visible: boolean): void {
+    const sides: (AxisLines | null)[] = [this.leftAxisLines, this.rightAxisLines];
+    for (const ax of sides) {
+      if (!ax) continue;
+      ax.camberLine.visible = visible;
+      ax.casterLine.visible = visible;
+      ax.toeLine.visible = visible;
+      ax.toeTipFront.visible = visible;
+      ax.spindleLine.visible = visible;
+      ax.spindleTip.visible = visible;
+    }
+    this.leftRibbon?.setVisible(visible);
+    this.rightRibbon?.setVisible(visible);
+    this.leftSpindleRibbon?.setVisible(visible);
+    this.rightSpindleRibbon?.setVisible(visible);
+    if (this.leftReferenceArc) this.leftReferenceArc.visible = visible;
+    if (this.rightReferenceArc) this.rightReferenceArc.visible = visible;
+    if (this.leftSpindleReferenceArc) this.leftSpindleReferenceArc.visible = visible;
+    if (this.rightSpindleReferenceArc) this.rightSpindleReferenceArc.visible = visible;
   }
 
   // -------------------------------------------------------------------------
