@@ -13,7 +13,9 @@
       "Bash(wc -l \"c:/Users/zotte/OneDrive/Documents/GitHub/Alignment_Simulator/my-threejs-car/src/app/car-viewer/\"*.ts \"c:/Users/zotte/OneDrive/Documents/GitHub/Alignment_Simulator/my-threejs-car/src/app/car-viewer/\"*.html \"c:/Users/zotte/OneDrive/Documents/GitHub/Alignment_Simulator/my-threejs-car/src/styles.scss\")",
       "Bash(ls README*)",
       "Read(//c/Users/zotte/OneDrive/Documents/GitHub/Alignment_Simulator/**)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(git fetch:*)",
+      "Bash(MSYS_NO_PATHCONV=1 npx ng build --base-href \"/Alignment_Simulator/\")"
     ]
   }
 }
