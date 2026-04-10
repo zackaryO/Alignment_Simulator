@@ -1,19 +1,80 @@
+/**
+ * @file wheel-assembly.ts
+ *
+ * Pivot hierarchy that wraps a single front wheel mesh and exposes the five
+ * alignment angles as setters. The class hides all of the awkward GLTF
+ * surgery that's required to take a wheel mesh out of its original parent
+ * chain and graft it under our own pivots without disturbing its world
+ * orientation.
+ *
+ * The pivot tree per wheel looks like this:
+ *
+ *     carModel
+ *      └── assembly        (THREE.Group, positioned at the wheel center)
+ *           └── turnPivot     (rotates around the inclined steering axis)
+ *                └── alignmentPivot  (applies camber and toe)
+ *                     └── wheelMesh  (the actual GLTF wheel — keeps its
+ *                                      spin-axis X rotation, Y/Z stripped)
+ *
+ * Why three nested pivots instead of one?
+ *   - `assembly` defines the origin and lets us translate the wheel
+ *     vertically to simulate jacking without disturbing rotations.
+ *   - `turnPivot` applies steering rotation around the inclined steering
+ *     axis (the SAI/caster axis). This is the only place where the
+ *     non-vertical axis matters, so we keep it isolated.
+ *   - `alignmentPivot` applies the static alignment angles (camber, toe).
+ *     Putting them inside `turnPivot` means they automatically follow the
+ *     wheel through a turn, which is what real linkages do.
+ */
+
 import * as THREE from 'three';
 
 export class WheelAssembly {
+  /** Outer group; positioned at the wheel center in carModel-local space. */
   readonly assembly: THREE.Group;
+  /** Rotates around the inclined steering axis when the wheels are steered. */
   readonly turnPivot: THREE.Group;
+  /** Applies static camber and toe to the wheel beneath the steering pivot. */
   readonly alignmentPivot: THREE.Group;
+  /** The actual GLTF wheel mesh, reparented under {@link alignmentPivot}. */
   readonly wheelMesh: THREE.Object3D;
+  /** Which side of the car this wheel sits on. */
   readonly side: 'left' | 'right';
 
-  private _restY = 0;       // Original assembly Y at construction
+  /** Y position of the assembly at construction time — restore baseline for jacking. */
+  private _restY = 0;
+  /** Current camber in degrees (raw input from the UI, not yet sign-corrected). */
   private _camberDeg = 0;
+  /** Current toe in degrees. */
   private _toeDeg = 0;
+  /** Current caster in degrees. */
   private _casterDeg = 0;
+  /** Current SAI in degrees. */
   private _saiDeg = 0;
+  /** Current steered angle in degrees (positive = turn left). */
   private _turnDeg = 0;
 
+  /**
+   * Build the pivot hierarchy and reparent the supplied wheel mesh into it.
+   *
+   * The constructor performs three non-trivial pieces of work:
+   *
+   *   1. Compute the wheel's world position and convert it into carModel-local
+   *      space so the new pivot stack lives at the same place the original
+   *      wheel did. We must do this BEFORE adding the wheel to the new tree.
+   *
+   *   2. Use {@link THREE.Object3D.attach}, not {@link THREE.Object3D.add},
+   *      to reparent the mesh. `attach()` recomputes the wheel's local
+   *      transform so its world transform is preserved through the move.
+   *
+   *   3. Strip the residual Y/Z rotations the GLTF artist baked into the
+   *      wheel mesh — those would otherwise stack on top of every alignment
+   *      angle we apply later. The X rotation (spin axis) is kept. If the
+   *      mesh comes through with a >90° Z rotation, that's the
+   *      mathematically-equivalent representation of a mirror — we replace
+   *      it with a negative scale so the visual mirroring is preserved
+   *      without polluting the rotation channels.
+   */
   constructor(wheel: THREE.Object3D, carModel: THREE.Object3D, side: 'left' | 'right') {
     this.side = side;
 
@@ -72,26 +133,31 @@ export class WheelAssembly {
     console.log(`[${side}] stripped Y=${THREE.MathUtils.radToDeg(euler.y).toFixed(1)}° Z=${THREE.MathUtils.radToDeg(euler.z).toFixed(1)}° — kept X=${THREE.MathUtils.radToDeg(euler.x).toFixed(1)}°`);
   }
 
+  /** Set caster angle (degrees). Recomputes the steering-axis quaternion. */
   setCaster(degrees: number): void {
     this._casterDeg = degrees;
     this._updateTurn();
   }
 
+  /** Set Steering Axis Inclination / KPI (degrees). Recomputes the steering-axis quaternion. */
   setSAI(degrees: number): void {
     this._saiDeg = degrees;
     this._updateTurn();
   }
 
+  /** Set the steered angle (degrees, positive = turn left). */
   setTurnAngle(degrees: number): void {
     this._turnDeg = degrees;
     this._updateTurn();
   }
 
+  /** Set camber (degrees). Sign convention: positive = top of wheel tilts outboard. */
   setCamber(degrees: number): void {
     this._camberDeg = degrees;
     this._updateAlignment();
   }
 
+  /** Set toe (degrees). Sign convention: positive = front of wheel toes inward. */
   setToe(degrees: number): void {
     this._toeDeg = degrees;
     this._updateAlignment();
@@ -151,6 +217,23 @@ export class WheelAssembly {
     return -rotated.y * ABSORPTION;
   }
 
+  /**
+   * Build the inclined steering-axis vector from the current caster and SAI
+   * angles, then rotate {@link turnPivot} around it by the current steered
+   * angle. This is the heart of the simulation: caster and SAI tilt the
+   * pivot axis away from vertical, and that tilt is what produces the
+   * jacking, camber-change-with-turn and self-centering effects you see
+   * in the visualization.
+   *
+   * Axis components (assembly-local space):
+   *   X = sin(SAI)·side    — lean of the axis toward/away from the car
+   *   Y = cos(caster)·cos(SAI)
+   *   Z = -sin(caster)     — caster tilts the top of the axis rearward
+   *
+   * The `saiSign` flips the X component for the left wheel so SAI always
+   * leans the *top* of the steering axis toward the car centerline,
+   * regardless of which side we're on.
+   */
   private _updateTurn(): void {
     if (this._turnDeg === 0) {
       this.turnPivot.quaternion.identity();
@@ -173,8 +256,15 @@ export class WheelAssembly {
 
   /**
    * Apply camber and toe directly to the alignment pivot.
-   * No baseline subtraction needed — we already stripped the residual
-   * from the wheel mesh itself in the constructor.
+   *
+   * No baseline subtraction is needed because the constructor already
+   * stripped the residual Y/Z rotation from the wheel mesh — at this point
+   * the alignment pivot has a clean identity orientation that represents
+   * "wheel pointing dead ahead with zero camber".
+   *
+   * Both signs are flipped on the left wheel so positive UI values always
+   * mean the same physical thing on both sides (positive camber = top
+   * outboard, positive toe = front inboard).
    */
   private _updateAlignment(): void {
     const camberSign = this.side === 'left' ? -1 : 1;
@@ -186,6 +276,14 @@ export class WheelAssembly {
     this.alignmentPivot.rotation.set(0, toeRad, camberRad);
   }
 
+  /**
+   * Read the wheel's *effective* camber after steering has rotated it
+   * around the inclined axis. Useful for telemetry / status read-outs that
+   * want to show how camber changes through a turn.
+   *
+   * Computed as the relative rotation between the assembly and the
+   * alignment pivot, then read out as the Z component of an XYZ Euler.
+   */
   getEffectiveCamber(): number {
     this.assembly.updateMatrixWorld(true);
 
@@ -202,6 +300,11 @@ export class WheelAssembly {
     return camberSign * THREE.MathUtils.radToDeg(euler.z);
   }
 
+  /**
+   * Read the wheel's *effective* toe after steering. Same approach as
+   * {@link getEffectiveCamber} — relative quaternion between assembly and
+   * alignment pivot, decomposed to XYZ Euler — but reads the Y component.
+   */
   getEffectiveToe(): number {
     this.assembly.updateMatrixWorld(true);
 
