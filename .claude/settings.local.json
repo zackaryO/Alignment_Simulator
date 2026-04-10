@@ -15,7 +15,8 @@
       "Read(//c/Users/zotte/OneDrive/Documents/GitHub/Alignment_Simulator/**)",
       "Bash(git checkout:*)",
       "Bash(git fetch:*)",
-      "Bash(MSYS_NO_PATHCONV=1 npx ng build --base-href \"/Alignment_Simulator/\")"
+      "Bash(MSYS_NO_PATHCONV=1 npx ng build --base-href \"/Alignment_Simulator/\")",
+      "Bash(node -e \"require\\('fs'\\).copyFileSync\\('docs/index.html','docs/404.html'\\)\")"
     ]
   }
 }
