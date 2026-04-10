@@ -1,5 +1,14 @@
 /* ==========================================================================
-   MOBILE-FIRST styles. Desktop overrides at the bottom.
+   Layout principles
+   --------------------------------------------------------------------------
+   - Single flex column container fills the viewport.
+   - All chrome (tabs, info panel, steering, error rows, actions) is
+     flex-shrink: 0 — they take exactly the space they need.
+   - The 3D renderer is the ONLY flex-grow element, so it always inflates
+     to fill the leftover space, no matter the screen size.
+   - The info panel is INLINE (never absolute) so it never overlaps the
+     renderer. The status metrics and selected-error description live
+     together in this single panel at the top of the screen.
    ========================================================================== */
 
 * { box-sizing: border-box; }
@@ -10,9 +19,10 @@
   height: 100vh;
   overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: #f4f5f7;
 }
 
-/* ===== Mode tabs (top header) ===== */
+/* ===== Mode tabs ===== */
 .mode-tabs {
   display: flex;
   background: #212529;
@@ -39,68 +49,90 @@
 
 .mode-tab:not(.active):hover { background: #495057; }
 
-.legend-toggle {
-  width: 44px;
-  background: #343a40;
-  color: #ffc107;
-  border: none;
-  font-size: 18px;
-  font-weight: bold;
-  cursor: pointer;
-  font-style: italic;
-}
-
-/* ===== Status bar (compact, overlay) ===== */
-.status-box {
+/* ==========================================================================
+   Info panel — only used in error mode for the selected error description
+   ========================================================================== */
+.info-panel {
+  background: #212529;
   color: white;
-  background-color: rgba(0, 0, 0, 0.75);
-  padding: 4px 6px;
-  border-radius: 6px;
-  margin: 4px;
-  z-index: 10;
-  position: absolute;
-  top: 50px;
-  left: 4px;
-  right: 4px;
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 2px 4px;
+  padding: 8px 12px;
+  flex-shrink: 0;
+  border-bottom: 2px solid #ffc107;
+}
+
+/* ===== Selected error description ===== */
+.error-detail {
+  font-size: 11px;
+  line-height: 1.4;
+  color: #e9ecef;
+  max-height: 22vh;
+  overflow-y: auto;
+}
+
+.error-detail h4 {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  color: #ffc107;
+  font-weight: 700;
+}
+
+.error-detail .detail-row {
+  display: flex;
+  gap: 6px;
+  margin: 2px 0;
+}
+
+.error-detail .detail-label {
+  flex: 0 0 64px;
+  color: #ffc107;
+  font-weight: 700;
+  text-transform: uppercase;
   font-size: 9px;
-  pointer-events: none;
+  padding-top: 1px;
 }
 
-.status-box h3 {
-  margin: 0;
-  font-size: 9px;
+.error-detail .detail-row > span:last-child { flex: 1; }
+
+.error-detail.placeholder {
+  color: #adb5bd;
+  font-style: italic;
   text-align: center;
+  padding: 0;
 }
 
-.status-box .status-item {
-  text-align: center;
+/* ==========================================================================
+   Render area — wraps the renderer so the legend can be positioned
+   relative to it (top-right corner of the 3D view) without ever bleeding
+   into other rows.
+   ========================================================================== */
+.render-area {
+  flex: 1 1 auto;
+  position: relative;
+  min-height: 220px;
+  display: flex;
+  overflow: hidden;
 }
 
-/* ===== Legend overlay ===== */
+/* ===== Legend overlay (always visible, top-right of renderer) ===== */
 .legend {
   position: absolute;
-  top: 90px;
-  right: 4px;
+  top: 8px;
+  right: 8px;
   z-index: 12;
-  background: rgba(0, 0, 0, 0.85);
+  background: rgba(0, 0, 0, 0.78);
   color: white;
   padding: 8px 10px;
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 10px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-width: 60%;
+  max-width: 50%;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
 }
 
-.legend-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
+.legend-item { display: flex; align-items: center; gap: 6px; }
 
 .legend-swatch {
   display: inline-block;
@@ -118,28 +150,33 @@
   background: transparent !important;
 }
 
-/* ===== 3D Renderer ===== */
+/* ==========================================================================
+   3D Renderer — fills its parent .render-area entirely
+   ========================================================================== */
 .renderer-container {
   flex: 1 1 auto;
-  min-height: 35vh;
+  min-width: 0;
+  min-height: 0;
   background-color: #eeeeee;
   overflow: hidden;
 }
 
-/* ===== Steering input row ===== */
+/* ==========================================================================
+   Steering row (shared by both modes)
+   ========================================================================== */
 .steering-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  background: linear-gradient(90deg, rgba(255,193,7,0.15), rgba(255,193,7,0.05));
+  gap: 8px;
+  padding: 6px 10px;
+  background: linear-gradient(90deg, rgba(255,193,7,0.18), rgba(255,193,7,0.06));
   border-top: 2px solid #ffc107;
   flex-shrink: 0;
 }
 
 .steering-row input[type="range"] {
   flex: 1;
-  height: 32px;
+  height: 28px;
   margin: 0;
 }
 
@@ -150,10 +187,7 @@
   white-space: nowrap;
 }
 
-.steering-hint {
-  font-size: 11px;
-  color: #999;
-}
+.steering-hint { font-size: 11px; color: #999; }
 
 .steering-value {
   min-width: 50px;
@@ -162,7 +196,9 @@
   font-size: 12px;
 }
 
-/* ===== Compact geometry controls ===== */
+/* ==========================================================================
+   Geometry mode controls
+   ========================================================================== */
 .geometry-controls {
   display: flex;
   flex-direction: column;
@@ -173,10 +209,7 @@
   flex-shrink: 0;
 }
 
-.vm-toggle {
-  display: flex;
-  gap: 4px;
-}
+.vm-toggle { display: flex; gap: 4px; }
 
 .vm-btn {
   flex: 1;
@@ -197,65 +230,15 @@
   border-color: #007bff;
 }
 
-.geo-slider {
-  display: flex;
-  flex-direction: column;
-}
+.geo-slider { display: flex; flex-direction: column; }
+.geo-slider label { font-size: 11px; font-weight: bold; margin-bottom: 1px; }
+.geo-slider input[type="range"] { height: 28px; margin: 0; }
 
-.geo-slider label {
-  font-size: 11px;
-  font-weight: bold;
-  margin-bottom: 1px;
-}
+.reset-btn.compact { padding: 8px; font-size: 12px; margin-top: 0; }
 
-.geo-slider input[type="range"] {
-  height: 28px;
-  margin: 0;
-}
-
-.reset-btn.compact {
-  padding: 8px;
-  font-size: 12px;
-  margin-top: 0;
-}
-
-/* ===== Alignment controls (geometry mode) ===== */
-.controls {
-  background-color: #f8f9fa;
-  padding: 6px 8px;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 6px;
-  border-top: 1px solid #dee2e6;
-  flex-shrink: 0;
-  overflow-y: auto;
-}
-
-.control-column {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.column-header {
-  margin: 0 0 2px 0;
-  font-size: 12px;
-  color: #333;
-  text-align: center;
-  border-bottom: 2px solid #007bff;
-  padding-bottom: 2px;
-}
-
-.control-item {
-  display: flex;
-  flex-direction: column;
-}
-
-input[type="range"] {
-  width: 100%;
-  margin: 2px 0;
-  height: 28px; /* Big touch target */
-}
+/* Generic button reset/colors */
+button { cursor: pointer; font-family: inherit; }
+input[type="range"] { width: 100%; margin: 2px 0; height: 28px; }
 
 label {
   margin: 1px 2px;
@@ -263,11 +246,6 @@ label {
   color: #333;
   font-size: 11px;
   white-space: nowrap;
-}
-
-button {
-  cursor: pointer;
-  font-family: inherit;
 }
 
 .reset-btn, .diag-btn {
@@ -287,64 +265,64 @@ button {
 .diag-btn { background-color: #6f42c1; }
 .diag-btn:hover { background-color: #5a32a3; }
 
-/* ===== Footer bar ===== */
-.footer-bar {
-  background-color: #e9ecef;
-  padding: 4px 8px;
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
-  font-size: 11px;
-  border-top: 1px solid #dee2e6;
-  flex-shrink: 0;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-
-/* ===== Error mode ===== */
+/* ==========================================================================
+   Error mode — compact button grid
+   ========================================================================== */
 .error-grid {
-  background: #f8f9fa;
-  padding: 6px 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
+  padding: 6px 10px 4px;
+  background: #f8f9fa;
   border-top: 1px solid #dee2e6;
   flex-shrink: 0;
-  overflow-y: auto;
-  max-height: 40vh;
 }
 
 .error-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  min-height: 30px;
 }
 
 .error-row-label {
-  width: 60px;
-  font-size: 12px;
-  font-weight: bold;
-  color: #333;
+  width: 56px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #495057;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  text-align: right;
   flex-shrink: 0;
 }
 
 .error-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
   flex: 1;
+  display: grid;
+  /* Auto-fit so 2 buttons stretch as wide as 3, etc. — always perfectly aligned. */
+  grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
+  gap: 4px;
 }
 
 .err-btn {
+  padding: 6px 6px;
+  font-size: 11px;
   background: white;
-  color: #333;
-  border: 1px solid #ccc;
+  color: #343a40;
+  border: 1px solid #ced4da;
   border-radius: 4px;
-  padding: 8px 6px;
-  font-size: 10px;
-  flex: 1;
-  min-width: 0;
-  min-height: 36px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  cursor: pointer;
+  min-height: 30px;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.err-btn:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
 }
 
 .err-btn.active {
@@ -353,50 +331,26 @@ button {
   border-color: #dc3545;
 }
 
-.err-btn:hover { background: #f0f0f0; }
 .err-btn.active:hover { background: #c82333; }
 
 .error-actions {
   display: flex;
-  gap: 6px;
-  margin-top: 4px;
+  gap: 8px;
+  padding: 4px 10px 8px;
+  background: #f8f9fa;
+  flex-shrink: 0;
 }
 
 .error-actions .reset-btn,
 .error-actions .diag-btn {
   margin-top: 0;
-}
-
-.error-description {
-  background: #fff3cd;
-  border-top: 2px solid #ffc107;
-  padding: 8px 12px;
-  font-size: 12px;
-  flex-shrink: 0;
-  overflow-y: auto;
-  max-height: 25vh;
-}
-
-.error-description.placeholder {
-  background: #f0f0f0;
-  border-top: 1px solid #ddd;
-  color: #888;
-  font-style: italic;
-  text-align: center;
-}
-
-.error-description h4 {
-  margin: 0 0 4px 0;
+  padding: 8px 10px;
   font-size: 13px;
-  color: #856404;
 }
 
-.error-description p {
-  margin: 3px 0;
-  line-height: 1.4;
-}
-
-/* ===== Diagnostic chart modal ===== */
+/* ==========================================================================
+   Diagnostic chart modal
+   ========================================================================== */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -428,10 +382,7 @@ button {
   color: white;
 }
 
-.modal-header h3 {
-  margin: 0;
-  font-size: 15px;
-}
+.modal-header h3 { margin: 0; font-size: 15px; }
 
 .modal-close {
   background: transparent;
@@ -444,10 +395,7 @@ button {
   line-height: 1;
 }
 
-.modal-body {
-  padding: 12px 14px;
-  overflow-y: auto;
-}
+.modal-body { padding: 12px 14px; overflow-y: auto; }
 
 .diag-section { margin-bottom: 14px; }
 
@@ -458,10 +406,7 @@ button {
   font-size: 12px;
 }
 
-.diag-radio-row {
-  display: flex;
-  gap: 6px;
-}
+.diag-radio-row { display: flex; gap: 6px; }
 
 .diag-rb {
   background: white;
@@ -492,9 +437,7 @@ button {
   color: #555;
 }
 
-.diag-table td {
-  padding: 0;
-}
+.diag-table td { padding: 0; }
 
 .diag-table td:first-child {
   font-weight: bold;
@@ -503,9 +446,7 @@ button {
   padding-right: 6px;
 }
 
-.diag-table button {
-  width: 100%;
-}
+.diag-table button { width: 100%; }
 
 .diag-result {
   background: #fff3cd;
@@ -514,21 +455,10 @@ button {
   margin-bottom: 12px;
 }
 
-.diag-result h4 {
-  margin: 0 0 4px 0;
-  font-size: 13px;
-}
+.diag-result h4 { margin: 0 0 4px 0; font-size: 13px; }
+.diag-result p { margin: 0; font-size: 13px; line-height: 1.4; }
 
-.diag-result p {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.diag-actions {
-  display: flex;
-  gap: 8px;
-}
+.diag-actions { display: flex; gap: 8px; }
 
 .diag-actions button {
   flex: 1;
@@ -545,23 +475,14 @@ button {
 .diag-actions button:hover { background: #5a6268; }
 
 /* ==========================================================================
-   DESKTOP OVERRIDES
+   DESKTOP / TABLET — make better use of width
    ========================================================================== */
 @media (min-width: 768px) {
-  .status-box {
-    grid-template-columns: repeat(5, 1fr);
-    font-size: 11px;
-    padding: 5px 10px;
-  }
-  .status-box h3 { font-size: 11px; }
+  .info-panel { padding: 10px 16px; }
+  .error-detail { font-size: 12px; max-height: 18vh; }
+  .error-detail h4 { font-size: 14px; }
+  .error-detail .detail-label { flex-basis: 72px; font-size: 10px; }
 
-  .legend {
-    top: 100px;
-    font-size: 11px;
-    padding: 8px 12px;
-  }
-
-  /* Geometry mode: horizontal compact bar so it doesn't block the model */
   .geometry-controls {
     flex-direction: row;
     align-items: center;
@@ -573,40 +494,18 @@ button {
   .geo-slider label { font-size: 12px; }
   .reset-btn.compact { flex: 0 0 auto; width: auto; padding: 8px 16px; }
 
-  .controls {
-    grid-template-columns: 1fr 1.4fr 1fr;
-    padding: 8px 10px;
-  }
+  .render-area { min-height: 320px; }
+  .legend { font-size: 11px; padding: 8px 12px; max-width: 30%; }
 
-  .renderer-container {
-    min-height: 60vh;
-  }
+  .error-row-label { width: 70px; font-size: 12px; }
+  .err-btn { font-size: 12px; padding: 7px 8px; min-height: 32px; }
 
-  .error-grid {
-    max-height: 30vh;
-  }
-
-  .error-row-label {
-    width: 80px;
-    font-size: 13px;
-  }
-
-  .err-btn {
-    font-size: 12px;
-    padding: 8px 10px;
-  }
-
-  .modal {
-    max-width: 600px;
-  }
+  .modal { max-width: 600px; }
 }
 
-@media (min-width: 1024px) {
-  .controls {
-    grid-template-columns: 1fr 1.4fr 1fr;
-  }
-
-  input[type="range"] {
-    height: 22px;
-  }
+@media (min-width: 1280px) {
+  .render-area { min-height: 360px; }
+  .error-grid { padding: 8px 16px 4px; }
+  .error-actions { padding: 4px 16px 10px; }
+  .info-panel { padding: 12px 20px; }
 }

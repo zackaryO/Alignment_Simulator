@@ -1,5 +1,7 @@
-<div class="container">
-  <!-- Top header: mode tabs -->
+<div class="container" [class.error-mode]="mode === 'error'" [class.geometry-mode]="mode === 'geometry'">
+  <!-- ============================================================ -->
+  <!--                       MODE TABS                              -->
+  <!-- ============================================================ -->
   <div class="mode-tabs">
     <button class="mode-tab" [class.active]="mode === 'geometry'" (click)="setMode('geometry')">
       Geometry
@@ -7,44 +9,59 @@
     <button class="mode-tab" [class.active]="mode === 'error'" (click)="setMode('error')">
       Errors
     </button>
-    <button class="legend-toggle" (click)="toggleLegend()" title="Toggle legend">
-      {{ showLegend ? '×' : 'i' }}
-    </button>
   </div>
 
-  <!-- Status bar — only shown in error mode -->
-  <div class="status-box" *ngIf="mode === 'error' && statusMessage" [innerHTML]="statusMessage"></div>
-
-  <!-- Legend overlay (toggleable) -->
-  <div class="legend" *ngIf="showLegend">
-    <div class="legend-item"><span class="legend-swatch" style="background:#ff0000;"></span> Camber</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:#32a852;"></span> Steering Axis</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:#0000ff;"></span> Toe</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:#ffcc00;"></span> Spindle Axis</div>
-    <div class="legend-item"><span class="legend-swatch dot" style="background:#4488ff;"></span> Toe Tracer</div>
-    <div class="legend-item"><span class="legend-swatch dot" style="background:#ff8800;"></span> Inside Wheel (Ackermann)</div>
-    <div class="legend-item"><span class="legend-swatch dashed"></span> Reference (zero geometry)</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:rgba(255,136,34,0.5);"></span> Caster/SAI Deviation</div>
+  <!-- ============================================================ -->
+  <!--   INFO PANEL — error description only.                       -->
+  <!--   Hidden entirely in geometry mode (no metrics — wasted space)-->
+  <!--   In error mode shows the selected error's full description, -->
+  <!--   or a placeholder prompt when nothing is selected.          -->
+  <!-- ============================================================ -->
+  <div class="info-panel" *ngIf="mode === 'error'">
+    <div class="error-detail" *ngIf="selectedError">
+      <h4>{{ selectedError.angle === 'ScrubRadius' ? 'Scrub Radius' : selectedError.angle }}: {{ selectedError.variant }}</h4>
+      <div class="detail-row"><span class="detail-label">What</span><span>{{ selectedError.description }}</span></div>
+      <div class="detail-row"><span class="detail-label">Driving</span><span>{{ selectedError.drivingEffect }}</span></div>
+      <div class="detail-row"><span class="detail-label">Tire wear</span><span>{{ selectedError.tireWear }}</span></div>
+    </div>
+    <div class="error-detail placeholder" *ngIf="!selectedError">
+      Select an alignment error below to see how it affects driving and tire wear.
+    </div>
   </div>
 
-  <!-- 3D Renderer -->
-  <div #rendererContainer class="renderer-container"></div>
+  <!-- ============================================================ -->
+  <!--   3D RENDERER + always-on legend overlay                     -->
+  <!-- ============================================================ -->
+  <div class="render-area">
+    <div #rendererContainer class="renderer-container"></div>
+    <div class="legend">
+      <div class="legend-item"><span class="legend-swatch" style="background:#ff0000;"></span> Camber</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#32a852;"></span> Steering Axis</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#0000ff;"></span> Toe</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:#ffcc00;"></span> Spindle Axis</div>
+      <div class="legend-item"><span class="legend-swatch dot" style="background:#4488ff;"></span> Toe Tracer</div>
+      <div class="legend-item"><span class="legend-swatch dot" style="background:#ff8800;"></span> Inside Wheel (Ackermann)</div>
+      <div class="legend-item"><span class="legend-swatch dashed"></span> Reference (zero geometry)</div>
+      <div class="legend-item"><span class="legend-swatch" style="background:rgba(255,136,34,0.5);"></span> Caster/SAI Deviation</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <!--   STEERING ROW (shared between modes)                        -->
+  <!-- ============================================================ -->
+  <div class="steering-row">
+    <span class="steering-label">Steering</span>
+    <span class="steering-hint">L</span>
+    <input type="range" id="turn" min="-40" max="40" step="0.5"
+           [disabled]="!modelLoaded" [(ngModel)]="turnAngle" (input)="onAngleChange()">
+    <span class="steering-hint">R</span>
+    <span class="steering-value">{{ formatDegrees(turnAngle) }}</span>
+  </div>
 
   <!-- ============================================================ -->
   <!--                       GEOMETRY MODE                          -->
   <!-- ============================================================ -->
   <ng-container *ngIf="mode === 'geometry'">
-    <!-- Steering input -->
-    <div class="steering-row">
-      <span class="steering-label">Steering</span>
-      <span class="steering-hint">L</span>
-      <input type="range" id="turn" min="-40" max="40" step="0.5"
-             [disabled]="!modelLoaded" [(ngModel)]="turnAngle" (input)="onAngleChange()">
-      <span class="steering-hint">R</span>
-      <span class="steering-value">{{ formatDegrees(turnAngle) }}</span>
-    </div>
-
-    <!-- Compact geometry controls: View toggle + Caster + SAI + Reset on one row (desktop) -->
     <div class="geometry-controls">
       <div class="vm-toggle">
         <button class="vm-btn" [class.active]="visualMode === 'conceptual'" (click)="setVisualMode('conceptual')">Conceptual</button>
@@ -68,17 +85,6 @@
   <!--                        ERROR MODE                            -->
   <!-- ============================================================ -->
   <ng-container *ngIf="mode === 'error'">
-    <!-- Steering still available in error mode -->
-    <div class="steering-row">
-      <span class="steering-label">Steering</span>
-      <span class="steering-hint">L</span>
-      <input type="range" id="turnE" min="-40" max="40" step="0.5"
-             [disabled]="!modelLoaded" [(ngModel)]="turnAngle" (input)="onAngleChange()">
-      <span class="steering-hint">R</span>
-      <span class="steering-value">{{ formatDegrees(turnAngle) }}</span>
-    </div>
-
-    <!-- Error selection grid -->
     <div class="error-grid">
       <div class="error-row" *ngFor="let cat of angleCategories">
         <div class="error-row-label">{{ cat === 'ScrubRadius' ? 'Scrub' : cat }}</div>
@@ -91,21 +97,10 @@
           </button>
         </div>
       </div>
-      <div class="error-actions">
-        <button class="reset-btn" (click)="clearError()">Clear</button>
-        <button class="diag-btn" (click)="openDiagnostic()">Diagnostic Chart</button>
-      </div>
     </div>
-
-    <!-- Error description panel -->
-    <div class="error-description" *ngIf="selectedError">
-      <h4>{{ selectedError.angle === 'ScrubRadius' ? 'Scrub Radius' : selectedError.angle }}: {{ selectedError.variant }}</h4>
-      <p><b>What:</b> {{ selectedError.description }}</p>
-      <p><b>Driving:</b> {{ selectedError.drivingEffect }}</p>
-      <p><b>Tire wear:</b> {{ selectedError.tireWear }}</p>
-    </div>
-    <div class="error-description placeholder" *ngIf="!selectedError">
-      <p>Select an alignment error above to see its effects on driving and tire wear.</p>
+    <div class="error-actions">
+      <button class="reset-btn" (click)="clearError()">Clear</button>
+      <button class="diag-btn" (click)="openDiagnostic()">Diagnostic Chart</button>
     </div>
   </ng-container>
 
