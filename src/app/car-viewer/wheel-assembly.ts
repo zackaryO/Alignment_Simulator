@@ -7,6 +7,7 @@ export class WheelAssembly {
   readonly wheelMesh: THREE.Object3D;
   readonly side: 'left' | 'right';
 
+  private _restY = 0;       // Original assembly Y at construction
   private _camberDeg = 0;
   private _toeDeg = 0;
   private _casterDeg = 0;
@@ -36,6 +37,7 @@ export class WheelAssembly {
     this.assembly.add(this.turnPivot);
     this.turnPivot.add(this.alignmentPivot);
     carModel.add(this.assembly);
+    this._restY = this.assembly.position.y;
 
     // Update all world matrices so attach() can compute correct local transforms
     carModel.updateMatrixWorld(true);
@@ -93,6 +95,60 @@ export class WheelAssembly {
   setToe(degrees: number): void {
     this._toeDeg = degrees;
     this._updateAlignment();
+  }
+
+  /**
+   * Apply vertical jacking displacement (in world units) to the assembly.
+   * Used for the SAI jacking effect — when the steering axis is inclined,
+   * turning the wheel causes the wheel center to want to move vertically.
+   * Positive lift = the assembly moves up (vehicle rises).
+   */
+  setVerticalLift(lift: number): void {
+    this.assembly.position.y = this._restY + lift;
+  }
+
+  /**
+   * Compute the body delta at this corner due to SAI/caster geometry.
+   *
+   * Physical model:
+   *   - The spindle axis (reference line) traces an arc around the inclined
+   *     steering axis as the wheel turns.
+   *   - When the spindle "presses down" (geometric Y negative), the suspension
+   *     EXTENDS on that side — the body corner RISES.
+   *   - When the spindle "lifts up" (geometric Y positive), the suspension
+   *     COMPRESSES — the body corner DROPS.
+   *   - BOTH wheels remain in contact with the road; only the body moves.
+   *   - The springs absorb part of the geometric motion, so only a fraction
+   *     becomes visible body movement.
+   *
+   * Returns: signed body delta. Positive = corner rises (suspension extends),
+   *          Negative = corner drops (suspension compresses).
+   */
+  computeJackingHeight(): number {
+    if (this._turnDeg === 0) return 0;
+
+    const casterRad = THREE.MathUtils.degToRad(this._casterDeg);
+    const saiRad = THREE.MathUtils.degToRad(this._saiDeg);
+    const saiSign = this.side === 'left' ? -1 : 1;
+    const outboardSign = this.side === 'left' ? 1 : -1;
+
+    const axis = new THREE.Vector3(
+      Math.sin(saiRad) * saiSign,
+      Math.cos(casterRad) * Math.cos(saiRad),
+      -Math.sin(casterRad)
+    ).normalize();
+
+    const spindleRadius = 1;
+    const spindleZero = new THREE.Vector3(outboardSign * spindleRadius, 0, 0);
+    const turnRad = THREE.MathUtils.degToRad(this._turnDeg);
+    const rotated = spindleZero.clone().applyAxisAngle(axis, turnRad);
+
+    // Suspension absorption: real springs eat ~60% of the geometric jacking,
+    // so only ~40% becomes visible body movement.
+    const ABSORPTION = 0.4;
+
+    // Negate so that "spindle pressing into road" → body rises (extends).
+    return -rotated.y * ABSORPTION;
   }
 
   private _updateTurn(): void {
