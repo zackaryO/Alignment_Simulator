@@ -1,94 +1,146 @@
+/* ==========================================================================
+   MOBILE-FIRST styles. Desktop overrides at the bottom.
+   ========================================================================== */
+
+* { box-sizing: border-box; }
+
 .container {
   display: flex;
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
-/* --- Status bar (top overlay) --- */
+/* ===== Mode tabs (top header) ===== */
+.mode-tabs {
+  display: flex;
+  background: #212529;
+  border-bottom: 2px solid #ffc107;
+  flex-shrink: 0;
+}
+
+.mode-tab {
+  flex: 1;
+  padding: 12px 8px;
+  background: #343a40;
+  color: #aaa;
+  border: none;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.mode-tab.active {
+  background: #ffc107;
+  color: #212529;
+}
+
+.mode-tab:not(.active):hover { background: #495057; }
+
+.legend-toggle {
+  width: 44px;
+  background: #343a40;
+  color: #ffc107;
+  border: none;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  font-style: italic;
+}
+
+/* ===== Status bar (compact, overlay) ===== */
 .status-box {
   color: white;
   background-color: rgba(0, 0, 0, 0.75);
-  padding: 4px 8px;
+  padding: 4px 6px;
   border-radius: 6px;
-  margin: 6px;
+  margin: 4px;
   z-index: 10;
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-around;
-  font-size: 12px;
+  top: 50px;
+  left: 4px;
+  right: 4px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 2px 4px;
+  font-size: 9px;
   pointer-events: none;
 }
 
 .status-box h3 {
   margin: 0;
-  font-size: 11px;
+  font-size: 9px;
+  text-align: center;
 }
 
-/* --- Legend (positioned below status bar, not overlapping Turn L/R) --- */
+.status-box .status-item {
+  text-align: center;
+}
+
+/* ===== Legend overlay ===== */
 .legend {
   position: absolute;
-  top: 55px;
-  right: 10px;
-  z-index: 9;
-  background: rgba(0, 0, 0, 0.65);
+  top: 90px;
+  right: 4px;
+  z-index: 12;
+  background: rgba(0, 0, 0, 0.85);
   color: white;
-  padding: 5px 8px;
+  padding: 8px 10px;
   border-radius: 6px;
-  font-size: 9px;
-  pointer-events: none;
+  font-size: 11px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  max-width: 60%;
 }
 
 .legend-item {
   display: flex;
   align-items: center;
-  gap: 5px;
-  white-space: nowrap;
+  gap: 6px;
 }
 
 .legend-swatch {
   display: inline-block;
-  width: 12px;
+  width: 14px;
   height: 8px;
   flex-shrink: 0;
   border-radius: 2px;
 }
 
-/* --- 3D Renderer --- */
+.legend-swatch.dot { border-radius: 50%; height: 12px; }
+
+.legend-swatch.dashed {
+  height: 0;
+  border-top: 2px dashed #888;
+  background: transparent !important;
+}
+
+/* ===== 3D Renderer ===== */
 .renderer-container {
-  flex: 1 1 0;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 35vh;
   background-color: #eeeeee;
   overflow: hidden;
 }
 
-/* --- Steering Input (own row, visually distinct) --- */
+/* ===== Steering input row ===== */
 .steering-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 5px 10px;
-  background: linear-gradient(90deg, rgba(255,193,7,0.12), rgba(255,193,7,0.04));
+  gap: 6px;
+  padding: 8px 10px;
+  background: linear-gradient(90deg, rgba(255,193,7,0.15), rgba(255,193,7,0.05));
   border-top: 2px solid #ffc107;
-  border-bottom: 1px solid #dee2e6;
+  flex-shrink: 0;
 }
 
 .steering-row input[type="range"] {
   flex: 1;
+  height: 32px;
   margin: 0;
-  height: 22px;
-}
-
-.steering-row label {
-  min-width: 50px;
-  text-align: center;
 }
 
 .steering-label {
@@ -99,24 +151,90 @@
 }
 
 .steering-hint {
-  font-size: 10px;
+  font-size: 11px;
   color: #999;
-  white-space: nowrap;
 }
 
-/* --- Alignment controls (3-column grid) --- */
+.steering-value {
+  min-width: 50px;
+  text-align: right;
+  font-weight: bold;
+  font-size: 12px;
+}
+
+/* ===== Compact geometry controls ===== */
+.geometry-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+  flex-shrink: 0;
+}
+
+.vm-toggle {
+  display: flex;
+  gap: 4px;
+}
+
+.vm-btn {
+  flex: 1;
+  padding: 8px 6px;
+  background: white;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  cursor: pointer;
+  min-height: 36px;
+}
+
+.vm-btn.active {
+  background: #007bff;
+  color: white;
+  border-color: #007bff;
+}
+
+.geo-slider {
+  display: flex;
+  flex-direction: column;
+}
+
+.geo-slider label {
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 1px;
+}
+
+.geo-slider input[type="range"] {
+  height: 28px;
+  margin: 0;
+}
+
+.reset-btn.compact {
+  padding: 8px;
+  font-size: 12px;
+  margin-top: 0;
+}
+
+/* ===== Alignment controls (geometry mode) ===== */
 .controls {
   background-color: #f8f9fa;
-  padding: 4px 6px;
+  padding: 6px 8px;
   display: grid;
-  grid-template-columns: 1fr 1.2fr 1fr;
+  grid-template-columns: 1fr;
   gap: 6px;
+  border-top: 1px solid #dee2e6;
+  flex-shrink: 0;
+  overflow-y: auto;
 }
 
 .control-column {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 
 .column-header {
@@ -135,12 +253,12 @@
 
 input[type="range"] {
   width: 100%;
-  margin: 1px 0;
-  height: 20px;
+  margin: 2px 0;
+  height: 28px; /* Big touch target */
 }
 
 label {
-  margin: 0 2px;
+  margin: 1px 2px;
   font-weight: bold;
   color: #333;
   font-size: 11px;
@@ -149,153 +267,346 @@ label {
 
 button {
   cursor: pointer;
+  font-family: inherit;
+}
+
+.reset-btn, .diag-btn {
   background-color: #007bff;
   color: white;
   border: none;
   border-radius: 4px;
-  padding: 6px;
-  font-size: 12px;
+  padding: 10px;
+  font-size: 13px;
   width: 100%;
-  margin-top: 2px;
-  transition: background-color 0.3s ease;
+  margin-top: 4px;
+  font-weight: bold;
 }
 
-button:hover {
-  background-color: #0056b3;
-}
+.reset-btn:hover, .diag-btn:hover { background-color: #0056b3; }
 
-/* --- Footer --- */
+.diag-btn { background-color: #6f42c1; }
+.diag-btn:hover { background-color: #5a32a3; }
+
+/* ===== Footer bar ===== */
 .footer-bar {
   background-color: #e9ecef;
-  padding: 3px 10px;
+  padding: 4px 8px;
   display: flex;
   justify-content: space-around;
   align-items: center;
   font-size: 11px;
   border-top: 1px solid #dee2e6;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
-.credits {
+/* ===== Error mode ===== */
+.error-grid {
+  background: #f8f9fa;
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid #dee2e6;
+  flex-shrink: 0;
+  overflow-y: auto;
+  max-height: 40vh;
+}
+
+.error-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.error-row-label {
+  width: 60px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #333;
+  flex-shrink: 0;
+}
+
+.error-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+
+.err-btn {
+  background: white;
+  color: #333;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px 6px;
+  font-size: 10px;
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+}
+
+.err-btn.active {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+}
+
+.err-btn:hover { background: #f0f0f0; }
+.err-btn.active:hover { background: #c82333; }
+
+.error-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.error-actions .reset-btn,
+.error-actions .diag-btn {
+  margin-top: 0;
+}
+
+.error-description {
+  background: #fff3cd;
+  border-top: 2px solid #ffc107;
+  padding: 8px 12px;
+  font-size: 12px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  max-height: 25vh;
+}
+
+.error-description.placeholder {
+  background: #f0f0f0;
+  border-top: 1px solid #ddd;
   color: #888;
+  font-style: italic;
+  text-align: center;
 }
 
-/* ========== MOBILE (phones) ========== */
-@media (max-width: 600px) {
-  .container {
-    overflow-y: auto;
+.error-description h4 {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  color: #856404;
+}
+
+.error-description p {
+  margin: 3px 0;
+  line-height: 1.4;
+}
+
+/* ===== Diagnostic chart modal ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+}
+
+.modal {
+  background: white;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: #6f42c1;
+  color: white;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 15px;
+}
+
+.modal-close {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 24px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.modal-body {
+  padding: 12px 14px;
+  overflow-y: auto;
+}
+
+.diag-section { margin-bottom: 14px; }
+
+.diag-section > label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.diag-radio-row {
+  display: flex;
+  gap: 6px;
+}
+
+.diag-rb {
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 12px;
+  flex: 1;
+  min-height: 36px;
+}
+
+.diag-rb.active {
+  background: #6f42c1;
+  color: white;
+  border-color: #6f42c1;
+}
+
+.diag-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 4px;
+}
+
+.diag-table th {
+  font-size: 11px;
+  text-align: center;
+  padding: 4px;
+  color: #555;
+}
+
+.diag-table td {
+  padding: 0;
+}
+
+.diag-table td:first-child {
+  font-weight: bold;
+  font-size: 12px;
+  text-align: right;
+  padding-right: 6px;
+}
+
+.diag-table button {
+  width: 100%;
+}
+
+.diag-result {
+  background: #fff3cd;
+  border-left: 4px solid #ffc107;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.diag-result h4 {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+}
+
+.diag-result p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.diag-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.diag-actions button {
+  flex: 1;
+  padding: 10px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  font-size: 13px;
+  min-height: 40px;
+}
+
+.diag-actions button:hover { background: #5a6268; }
+
+/* ==========================================================================
+   DESKTOP OVERRIDES
+   ========================================================================== */
+@media (min-width: 768px) {
+  .status-box {
+    grid-template-columns: repeat(5, 1fr);
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+  .status-box h3 { font-size: 11px; }
+
+  .legend {
+    top: 100px;
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+
+  /* Geometry mode: horizontal compact bar so it doesn't block the model */
+  .geometry-controls {
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 12px;
+  }
+  .vm-toggle { flex: 0 0 auto; }
+  .geo-slider { flex: 1 1 0; min-width: 0; }
+  .geo-slider label { font-size: 12px; }
+  .reset-btn.compact { flex: 0 0 auto; width: auto; padding: 8px 16px; }
+
+  .controls {
+    grid-template-columns: 1fr 1.4fr 1fr;
+    padding: 8px 10px;
   }
 
   .renderer-container {
-    min-height: 45vh;
-    flex: none;
+    min-height: 60vh;
   }
 
-  /* Status bar: smaller, 2-column grid */
-  .status-box {
-    font-size: 9px;
-    padding: 3px 4px;
-    margin: 4px;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1px 6px;
-    justify-items: center;
+  .error-grid {
+    max-height: 30vh;
   }
 
-  .status-box h3 {
-    font-size: 9px;
-  }
-
-  /* Legend: smaller, bottom-right instead of top-right to avoid overlap */
-  .legend {
-    top: auto;
-    bottom: 10px;
-    right: 6px;
-    font-size: 8px;
-    padding: 4px 6px;
-    gap: 1px;
-    opacity: 0.85;
-  }
-
-  .legend-swatch {
-    width: 10px;
-    height: 7px;
-  }
-
-  /* Steering row: stack vertically */
-  .steering-row {
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 4px;
-    padding: 6px 8px;
-  }
-
-  .steering-row input[type="range"] {
-    width: 100%;
-    flex: none;
-    height: 28px;
-  }
-
-  .steering-label {
-    width: 100%;
-    text-align: center;
+  .error-row-label {
+    width: 80px;
     font-size: 13px;
   }
 
-  /* Alignment grid: single column, all stacked */
-  .controls {
-    grid-template-columns: 1fr;
-    gap: 4px;
-    padding: 6px 8px;
-  }
-
-  .column-header {
-    font-size: 13px;
-    padding-bottom: 3px;
-  }
-
-  /* Bigger touch targets */
-  input[type="range"] {
-    height: 28px;
-    margin: 3px 0;
-  }
-
-  label {
+  .err-btn {
     font-size: 12px;
-    padding: 2px 0;
+    padding: 8px 10px;
   }
 
-  button {
-    padding: 10px;
-    font-size: 14px;
-    margin-top: 4px;
-  }
-
-  /* Footer */
-  .footer-bar {
-    flex-wrap: wrap;
-    gap: 4px;
-    justify-content: center;
-    font-size: 10px;
-    padding: 4px 8px;
-  }
-
-  .credits {
-    width: 100%;
-    text-align: center;
+  .modal {
+    max-width: 600px;
   }
 }
 
-/* ========== TABLET (medium screens) ========== */
-@media (min-width: 601px) and (max-width: 900px) {
-  .status-box {
-    font-size: 10px;
-  }
-
-  .legend {
-    font-size: 9px;
+@media (min-width: 1024px) {
+  .controls {
+    grid-template-columns: 1fr 1.4fr 1fr;
   }
 
   input[type="range"] {
-    height: 24px;
+    height: 22px;
   }
 }

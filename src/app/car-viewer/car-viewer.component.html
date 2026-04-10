@@ -1,74 +1,170 @@
 <div class="container">
-  <div class="status-box" *ngIf="statusMessage" [innerHTML]="statusMessage"></div>
+  <!-- Top header: mode tabs -->
+  <div class="mode-tabs">
+    <button class="mode-tab" [class.active]="mode === 'geometry'" (click)="setMode('geometry')">
+      Geometry
+    </button>
+    <button class="mode-tab" [class.active]="mode === 'error'" (click)="setMode('error')">
+      Errors
+    </button>
+    <button class="legend-toggle" (click)="toggleLegend()" title="Toggle legend">
+      {{ showLegend ? '×' : 'i' }}
+    </button>
+  </div>
 
-  <!-- Legend -->
-  <div class="legend">
-    <div class="legend-item"><span class="legend-swatch" style="background:#ff0000;"></span> Camber Axis</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:#32a852;"></span> Steering Axis (Caster + SAI)</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:#0000ff;"></span> Toe Line</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:#4488ff; border-radius:50%;"></span> Toe Tip Tracer</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:#ff8800; border-radius:50%;"></span> Inside Wheel (Ackermann)</div>
-    <div class="legend-item"><span class="legend-swatch" style="background:#888; height:2px; margin-top:5px; border-top:2px dashed #888;"></span> Reference Arc (zero geometry)</div>
+  <!-- Status bar — only shown in error mode -->
+  <div class="status-box" *ngIf="mode === 'error' && statusMessage" [innerHTML]="statusMessage"></div>
+
+  <!-- Legend overlay (toggleable) -->
+  <div class="legend" *ngIf="showLegend">
+    <div class="legend-item"><span class="legend-swatch" style="background:#ff0000;"></span> Camber</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#32a852;"></span> Steering Axis</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#0000ff;"></span> Toe</div>
+    <div class="legend-item"><span class="legend-swatch" style="background:#ffcc00;"></span> Spindle Axis</div>
+    <div class="legend-item"><span class="legend-swatch dot" style="background:#4488ff;"></span> Toe Tracer</div>
+    <div class="legend-item"><span class="legend-swatch dot" style="background:#ff8800;"></span> Inside Wheel (Ackermann)</div>
+    <div class="legend-item"><span class="legend-swatch dashed"></span> Reference (zero geometry)</div>
     <div class="legend-item"><span class="legend-swatch" style="background:rgba(255,136,34,0.5);"></span> Caster/SAI Deviation</div>
   </div>
 
+  <!-- 3D Renderer -->
   <div #rendererContainer class="renderer-container"></div>
 
-  <!-- Steering Input — on top, visually separate from alignment settings -->
-  <div class="steering-row">
-    <span class="steering-label">Steering Input</span>
-    <span class="steering-hint">L &larr;</span>
-    <input type="range" id="turn" min="-40" max="40" step="0.5"
-           [disabled]="!modelLoaded" [(ngModel)]="turnAngle" (input)="onAngleChange()">
-    <span class="steering-hint">&rarr; R</span>
-    <label for="turn">{{ formatDegrees(turnAngle) }}</label>
-  </div>
-
-  <!-- Static Alignment Controls -->
-  <div class="controls">
-    <div class="control-column">
-      <h3 class="column-header">Left Wheel</h3>
-      <div class="control-item">
-        <label for="leftCamber">Camber: {{ formatDegrees(leftCamber) }}</label>
-        <input type="range" id="leftCamber" min="-5" max="5" step="0.1"
-               [disabled]="!modelLoaded" [(ngModel)]="leftCamber" (input)="onAngleChange()">
-      </div>
+  <!-- ============================================================ -->
+  <!--                       GEOMETRY MODE                          -->
+  <!-- ============================================================ -->
+  <ng-container *ngIf="mode === 'geometry'">
+    <!-- Steering input -->
+    <div class="steering-row">
+      <span class="steering-label">Steering</span>
+      <span class="steering-hint">L</span>
+      <input type="range" id="turn" min="-40" max="40" step="0.5"
+             [disabled]="!modelLoaded" [(ngModel)]="turnAngle" (input)="onAngleChange()">
+      <span class="steering-hint">R</span>
+      <span class="steering-value">{{ formatDegrees(turnAngle) }}</span>
     </div>
 
-    <div class="control-column">
-      <h3 class="column-header">Alignment</h3>
-      <div class="control-item">
-        <label for="totalToe">Total Toe: {{ formatDegrees(totalToeSlider) }} <small>(+ in / - out)</small></label>
-        <input type="range" id="totalToe" min="-3" max="3" step="0.1"
-               [disabled]="!modelLoaded" [(ngModel)]="totalToeSlider" (input)="onAngleChange()">
+    <!-- Compact geometry controls: View toggle + Caster + SAI + Reset on one row (desktop) -->
+    <div class="geometry-controls">
+      <div class="vm-toggle">
+        <button class="vm-btn" [class.active]="visualMode === 'conceptual'" (click)="setVisualMode('conceptual')">Conceptual</button>
+        <button class="vm-btn" [class.active]="visualMode === 'actual'" (click)="setVisualMode('actual')">Actual</button>
       </div>
-      <div class="control-item">
+      <div class="geo-slider">
         <label for="caster">Caster: {{ formatDegrees(casterAngle) }}</label>
-        <input type="range" id="caster" min="0" max="60" step="0.5"
+        <input type="range" id="caster" min="0" max="12" step="0.1"
                [disabled]="!modelLoaded" [(ngModel)]="casterAngle" (input)="onAngleChange()">
       </div>
-      <div class="control-item">
+      <div class="geo-slider">
         <label for="sai">SAI/KPI: {{ formatDegrees(saiAngle) }}</label>
         <input type="range" id="sai" min="0" max="20" step="0.5"
                [disabled]="!modelLoaded" [(ngModel)]="saiAngle" (input)="onAngleChange()">
       </div>
-      <button (click)="resetAngles()">Reset All</button>
+      <button class="reset-btn compact" (click)="resetAngles()">Reset</button>
+    </div>
+  </ng-container>
+
+  <!-- ============================================================ -->
+  <!--                        ERROR MODE                            -->
+  <!-- ============================================================ -->
+  <ng-container *ngIf="mode === 'error'">
+    <!-- Steering still available in error mode -->
+    <div class="steering-row">
+      <span class="steering-label">Steering</span>
+      <span class="steering-hint">L</span>
+      <input type="range" id="turnE" min="-40" max="40" step="0.5"
+             [disabled]="!modelLoaded" [(ngModel)]="turnAngle" (input)="onAngleChange()">
+      <span class="steering-hint">R</span>
+      <span class="steering-value">{{ formatDegrees(turnAngle) }}</span>
     </div>
 
-    <div class="control-column">
-      <h3 class="column-header">Right Wheel</h3>
-      <div class="control-item">
-        <label for="rightCamber">Camber: {{ formatDegrees(rightCamber) }}</label>
-        <input type="range" id="rightCamber" min="-5" max="5" step="0.1"
-               [disabled]="!modelLoaded" [(ngModel)]="rightCamber" (input)="onAngleChange()">
+    <!-- Error selection grid -->
+    <div class="error-grid">
+      <div class="error-row" *ngFor="let cat of angleCategories">
+        <div class="error-row-label">{{ cat === 'ScrubRadius' ? 'Scrub' : cat }}</div>
+        <div class="error-buttons">
+          <button class="err-btn"
+                  *ngFor="let err of errorsForCategory(cat)"
+                  [class.active]="selectedError?.id === err.id"
+                  (click)="selectError(err)">
+            {{ err.variant }}
+          </button>
+        </div>
+      </div>
+      <div class="error-actions">
+        <button class="reset-btn" (click)="clearError()">Clear</button>
+        <button class="diag-btn" (click)="openDiagnostic()">Diagnostic Chart</button>
       </div>
     </div>
-  </div>
 
-  <!-- Computed Values + Credits -->
-  <div class="footer-bar">
-    <span><b>Cross Camber:</b> {{ formatDegrees(crossCamber) }}</span>
-    <span><b>Total Toe:</b> {{ formatDegrees(totalToe) }}</span>
-    <span class="credits"><small>Created by Zack Otterstrom | 3D model by KrStolorz</small></span>
+    <!-- Error description panel -->
+    <div class="error-description" *ngIf="selectedError">
+      <h4>{{ selectedError.angle === 'ScrubRadius' ? 'Scrub Radius' : selectedError.angle }}: {{ selectedError.variant }}</h4>
+      <p><b>What:</b> {{ selectedError.description }}</p>
+      <p><b>Driving:</b> {{ selectedError.drivingEffect }}</p>
+      <p><b>Tire wear:</b> {{ selectedError.tireWear }}</p>
+    </div>
+    <div class="error-description placeholder" *ngIf="!selectedError">
+      <p>Select an alignment error above to see its effects on driving and tire wear.</p>
+    </div>
+  </ng-container>
+
+  <!-- ============================================================ -->
+  <!--                  DIAGNOSTIC CHART MODAL                      -->
+  <!-- ============================================================ -->
+  <div class="modal-overlay" *ngIf="showDiagnostic" (click)="closeDiagnostic()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>SAI Diagnostic Chart</h3>
+        <button class="modal-close" (click)="closeDiagnostic()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="diag-section">
+          <label>Suspension type:</label>
+          <div class="diag-radio-row">
+            <button class="diag-rb" [class.active]="diagSuspension === 'SLA'"
+                    (click)="diagSuspension = 'SLA'; runDiagnostic()">SLA / Wishbone</button>
+            <button class="diag-rb" [class.active]="diagSuspension === 'MacPherson'"
+                    (click)="diagSuspension = 'MacPherson'; runDiagnostic()">MacPherson Strut</button>
+          </div>
+        </div>
+
+        <div class="diag-section">
+          <table class="diag-table">
+            <thead><tr><th>Angle</th><th>OK</th><th>Less</th><th>Greater</th></tr></thead>
+            <tbody>
+              <tr>
+                <td>SAI</td>
+                <td><button class="diag-rb" [class.active]="diagSAI === 'OK'" (click)="diagSAI = 'OK'; runDiagnostic()">OK</button></td>
+                <td><button class="diag-rb" [class.active]="diagSAI === 'Less'" (click)="diagSAI = 'Less'; runDiagnostic()">Less</button></td>
+                <td><button class="diag-rb" [class.active]="diagSAI === 'Greater'" (click)="diagSAI = 'Greater'; runDiagnostic()">Greater</button></td>
+              </tr>
+              <tr>
+                <td>Camber</td>
+                <td><button class="diag-rb" [class.active]="diagCamber === 'OK'" (click)="diagCamber = 'OK'; runDiagnostic()">OK</button></td>
+                <td><button class="diag-rb" [class.active]="diagCamber === 'Less'" (click)="diagCamber = 'Less'; runDiagnostic()">Less</button></td>
+                <td><button class="diag-rb" [class.active]="diagCamber === 'Greater'" (click)="diagCamber = 'Greater'; runDiagnostic()">Greater</button></td>
+              </tr>
+              <tr>
+                <td>Incl. Angle</td>
+                <td><button class="diag-rb" [class.active]="diagIA === 'OK'" (click)="diagIA = 'OK'; runDiagnostic()">OK</button></td>
+                <td><button class="diag-rb" [class.active]="diagIA === 'Less'" (click)="diagIA = 'Less'; runDiagnostic()">Less</button></td>
+                <td><button class="diag-rb" [class.active]="diagIA === 'Greater'" (click)="diagIA = 'Greater'; runDiagnostic()">Greater</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="diag-result" *ngIf="diagResult">
+          <h4>Diagnosis:</h4>
+          <p>{{ diagResult }}</p>
+        </div>
+
+        <div class="diag-actions">
+          <button (click)="resetDiagnostic()">Reset</button>
+          <button (click)="closeDiagnostic()">Close</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
