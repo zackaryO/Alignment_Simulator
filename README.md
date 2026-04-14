@@ -217,9 +217,6 @@ custom GitHub Pages files ([docs/404.html](docs/404.html) and
 
 - **3D model:** [500 Followers Milestone — Mercedes-Benz GLC LP](https://sketchfab.com/3d-models/500-followers-milestone-mercedes-benz-glc-lp-35837d361a084e1eb70f78a93f56177f)
   on Sketchfab.
-- **Curriculum reference:** Mercedes-Benz DRIVE Alignment Certification
-  EKP 10.21 (used for the alignment-error definitions and the SAI
-  diagnostic chart).
 - **Built with:** [Angular 16](https://angular.io/), [Three.js r163](https://threejs.org/),
   TypeScript 5.1.
 

@@ -10,7 +10,7 @@
  *   3. Build a {@link WheelAssembly} for each front wheel, plus all of the
  *      visualization aids (axis lines, deviation ribbons, jacking indicators,
  *      tracers, road plane).
- *   4. Drive the simulation from the UI controls — sliders for camber, caster,
+ *   4. Drive the simulation from the UI controls, sliders for camber, caster,
  *      SAI, toe and steering angle, plus an "Errors" mode that loads canned
  *      mis-alignment scenarios from {@link ERROR_DEFINITIONS}.
  *   5. Compute Ackermann steering geometry so the inner and outer wheels
@@ -37,11 +37,13 @@ import { WheelAssembly } from './wheel-assembly';
 import {
   createAxisLines, updateCasterLine, createReferenceArc, createSpindleReferenceArc,
   createRoadSurfacePlane, DeviationRibbon, SpindleDeviationRibbon,
-  JackingIndicator, AxisLines, ToeTracer, TOE_LINE_LENGTH, SPINDLE_LINE_LENGTH
+  JackingIndicator, AxisLines, ToeTracer, ErrorIndicator,
+  TOE_LINE_LENGTH, SPINDLE_LINE_LENGTH
 } from './axis-lines';
 import {
   AlignmentError, AngleCategory, getErrorsByAngle,
-  SuspensionType, TriState, lookupDiagnostic
+  SuspensionType, TriState, lookupDiagnostic,
+  SLA_DIAGNOSTICS, MACPHERSON_DIAGNOSTICS
 } from './alignment-errors';
 
 /** High-level UI mode: free-play geometry adjustment vs. canned error scenarios. */
@@ -49,10 +51,10 @@ type AppMode = 'geometry' | 'error';
 
 /**
  * Visual rendering mode.
- *  - `conceptual`: the car body stays still, only the wheels reorient — best
+ *  - `conceptual`: the car body stays still, only the wheels reorient, best
  *    for understanding the angles in isolation.
  *  - `actual`:     the body lifts and rolls in response to SAI/caster jacking
- *    while the wheels stay glued to the road plane — best for understanding
+ *    while the wheels stay glued to the road plane, best for understanding
  *    the real-world ride-height effects of steering geometry.
  */
 type VisualMode = 'conceptual' | 'actual';
@@ -105,6 +107,18 @@ export class CarViewerComponent implements OnInit {
   leftJacking: JackingIndicator | null = null;
   /** Vertical bar that grows up/down to show body lift at the right corner. */
   rightJacking: JackingIndicator | null = null;
+  /** Per-error ghost lines + deviation wedges (left wheel). */
+  leftErrorIndicator: ErrorIndicator | null = null;
+  /** Per-error ghost lines + deviation wedges (right wheel). */
+  rightErrorIndicator: ErrorIndicator | null = null;
+  /** Dashed reference arc for the left toe tip, toggled per error category. */
+  leftReferenceArc: THREE.Line | null = null;
+  /** Dashed reference arc for the right toe tip, toggled per error category. */
+  rightReferenceArc: THREE.Line | null = null;
+  /** Dashed reference arc for the left spindle tip, toggled per error category. */
+  leftSpindleReferenceArc: THREE.Line | null = null;
+  /** Dashed reference arc for the right spindle tip, toggled per error category. */
+  rightSpindleReferenceArc: THREE.Line | null = null;
 
   /** Loaded GLTF root node. */
   carModel: THREE.Object3D | null = null;
@@ -130,7 +144,7 @@ export class CarViewerComponent implements OnInit {
   showDiagnostic = false;
 
   // -------------------------------------------------------------------------
-  // Geometry-mode slider state — these are the values the user is editing
+  // Geometry-mode slider state, these are the values the user is editing
   // and they feed straight into the WheelAssembly setters on every change.
   // All angles are in degrees.
   // -------------------------------------------------------------------------
@@ -140,9 +154,9 @@ export class CarViewerComponent implements OnInit {
   rightCamber = 0;
   /** Total toe in degrees, split symmetrically between the two wheels. */
   totalToeSlider = 0;
-  /** Per-wheel toe applied to the left wheel — half of the total slider value. */
+  /** Per-wheel toe applied to the left wheel, half of the total slider value. */
   get leftToe(): number { return this.totalToeSlider / 2; }
-  /** Per-wheel toe applied to the right wheel — half of the total slider value. */
+  /** Per-wheel toe applied to the right wheel, half of the total slider value. */
   get rightToe(): number { return this.totalToeSlider / 2; }
   /** Caster angle in degrees, applied symmetrically to both wheels. Default ≈ 3°. */
   casterAngle = 3;
@@ -175,14 +189,21 @@ export class CarViewerComponent implements OnInit {
   selectedError: AlignmentError | null = null;
 
   // -------------------------------------------------------------------------
-  // Diagnostic chart state — these mirror the dropdowns in the modal and feed
+  // Diagnostic chart state, these mirror the dropdowns in the modal and feed
   // lookupDiagnostic() in alignment-errors.ts.
   // -------------------------------------------------------------------------
   diagSuspension: SuspensionType = 'SLA';
-  diagSAI: TriState = 'OK';
-  diagCamber: TriState = 'OK';
-  diagIA: TriState = 'OK';
-  /** Human-readable diagnosis text shown after the user picks the three TriState values. */
+  /**
+   * Three diagnostic-chart fields are null until the user explicitly
+   * clicks a cell. Null means "not yet selected" and is treated as a
+   * wildcard when computing which cells would lead to a no-match
+   * combination, so the chart does not start with any option active
+   * or greyed.
+   */
+  diagSAI: TriState | null = null;
+  diagCamber: TriState | null = null;
+  diagIA: TriState | null = null;
+  /** Human-readable diagnosis text shown after the user picks all three TriState values. */
   diagResult: string = '';
 
   /** Manufacturer-spec maximum camber used for the wear classification in {@link updateStatus}. */
@@ -192,17 +213,17 @@ export class CarViewerComponent implements OnInit {
 
   /** Becomes true once the GLTF has finished loading and all visual aids are wired up. */
   modelLoaded = false;
-  /** HTML status string rendered into the bottom strip — built by {@link updateStatus}. */
+  /** HTML status string rendered into the bottom strip, built by {@link updateStatus}. */
   statusMessage = '';
 
   /** Side-to-side camber difference. Positive = pulls left, negative = pulls right. */
   get crossCamber(): number { return this.leftCamber - this.rightCamber; }
-  /** Sum of left and right toe — used by the wear-pattern logic. */
+  /** Sum of left and right toe, used by the wear-pattern logic. */
   get totalToe(): number { return this.leftToe + this.rightToe; }
 
   constructor() {}
 
-  /** Angular lifecycle hook — kick off the Three.js bootstrap once the view exists. */
+  /** Angular lifecycle hook, kick off the Three.js bootstrap once the view exists. */
   ngOnInit() {
     this.initThree();
   }
@@ -261,7 +282,7 @@ export class CarViewerComponent implements OnInit {
 
   /**
    * Add lighting to the scene. We deliberately use a very bright ambient
-   * light because the visualization is technical/diagrammatic — we want the
+   * light because the visualization is technical/diagrammatic, we want the
    * car's painted surfaces clearly visible from any orbit angle, not
    * cinematically lit.
    */
@@ -319,12 +340,12 @@ export class CarViewerComponent implements OnInit {
         this.rightAxisLines = createAxisLines(this.rightWheelAssembly);
 
         // Reference arcs (toe tip path)
-        createReferenceArc(this.leftWheelAssembly, TOE_LINE_LENGTH, this.scene);
-        createReferenceArc(this.rightWheelAssembly, TOE_LINE_LENGTH, this.scene);
+        this.leftReferenceArc = createReferenceArc(this.leftWheelAssembly, TOE_LINE_LENGTH, this.scene);
+        this.rightReferenceArc = createReferenceArc(this.rightWheelAssembly, TOE_LINE_LENGTH, this.scene);
 
         // Spindle reference arcs
-        createSpindleReferenceArc(this.leftWheelAssembly, SPINDLE_LINE_LENGTH);
-        createSpindleReferenceArc(this.rightWheelAssembly, SPINDLE_LINE_LENGTH);
+        this.leftSpindleReferenceArc = createSpindleReferenceArc(this.leftWheelAssembly, SPINDLE_LINE_LENGTH);
+        this.rightSpindleReferenceArc = createSpindleReferenceArc(this.rightWheelAssembly, SPINDLE_LINE_LENGTH);
 
         // Road surface plane (3D grid at the actual wheel-bottom Y)
         createRoadSurfacePlane(this.scene, this.leftWheelAssembly, this.rightWheelAssembly);
@@ -344,6 +365,10 @@ export class CarViewerComponent implements OnInit {
         // Jacking indicators (body roll bars)
         this.leftJacking = new JackingIndicator(this.leftWheelAssembly);
         this.rightJacking = new JackingIndicator(this.rightWheelAssembly);
+
+        // Per-error ghost lines + deviation wedges (hidden until an error is selected)
+        this.leftErrorIndicator = new ErrorIndicator(this.leftWheelAssembly);
+        this.rightErrorIndicator = new ErrorIndicator(this.rightWheelAssembly);
 
         // Capture wheel assembly REST positions in world space.
         // When carModel rolls/lifts, we'll counter-translate the assemblies
@@ -397,13 +422,13 @@ export class CarViewerComponent implements OnInit {
     const innerAngle = Math.atan(L / (R - W / 2));
     const outerAngle = Math.atan(L / (R + W / 2));
     if (avgTurnDeg > 0) {
-      // Turning LEFT — left wheel is the inner wheel.
+      // Turning LEFT, left wheel is the inner wheel.
       return {
         leftDeg: THREE.MathUtils.radToDeg(innerAngle),
         rightDeg: THREE.MathUtils.radToDeg(outerAngle)
       };
     } else {
-      // Turning RIGHT — right wheel is the inner wheel.
+      // Turning RIGHT, right wheel is the inner wheel.
       return {
         leftDeg: -THREE.MathUtils.radToDeg(outerAngle),
         rightDeg: -THREE.MathUtils.radToDeg(innerAngle)
@@ -416,7 +441,7 @@ export class CarViewerComponent implements OnInit {
    * every dependent visualization (axis lines, ribbons, jacking bars,
    * tracers, status strip).
    *
-   * Called whenever any control changes — the cost of touching every wheel
+   * Called whenever any control changes, the cost of touching every wheel
    * setter unconditionally is negligible compared to the WebGL render, so we
    * keep the data flow uniform and side-effect-free instead of trying to
    * surgically update only what changed.
@@ -550,7 +575,7 @@ export class CarViewerComponent implements OnInit {
     }
   }
 
-  /** Bound to every slider's `(input)` event — just routes to {@link updateAllWheels}. */
+  /** Bound to every slider's `(input)` event, just routes to {@link updateAllWheels}. */
   onAngleChange() { this.updateAllWheels(); }
 
   /** Restore every geometry slider to its factory-default value. */
@@ -580,6 +605,7 @@ export class CarViewerComponent implements OnInit {
       // scenario.
       this.resetAngles();
     }
+    this.applyErrorVisuals();
   }
 
   /** Switch between conceptual (body fixed) and actual (body lifts/rolls) rendering. */
@@ -623,12 +649,172 @@ export class CarViewerComponent implements OnInit {
     if (s.caster !== undefined) this.casterAngle = s.caster;
     if (s.sai !== undefined) this.saiAngle = s.sai;
     this.updateAllWheels();
+    this.applyErrorVisuals();
   }
 
   /** Drop the selected error and return everything to factory defaults. */
   clearError() {
     this.selectedError = null;
     this.resetAngles();
+    this.applyErrorVisuals();
+  }
+
+  // -------------------------------------------------------------------------
+  // Error-mode visibility & ghost/wedge indicator logic
+  // -------------------------------------------------------------------------
+
+  /** Factory-default value used as the "ideal" reference for each angle. */
+  private static readonly IDEAL_CAMBER = 0;
+  private static readonly IDEAL_TOE = 0;
+  private static readonly IDEAL_CASTER = 3;
+  private static readonly IDEAL_SAI = 13;
+
+  /**
+   * Drive per-error visibility on the visualization.
+   *
+   * Geometry mode: every axis line, ribbon and reference arc is shown,
+   * and all error-indicator ghosts/wedges are hidden.
+   *
+   * Error mode with no selection: same as geometry mode, the user can
+   * still see the full visualization while they choose a scenario.
+   *
+   * Error mode with a selection: only the axis line(s) and supporting
+   * geometry that are physically affected by the chosen error remain
+   * visible. The matching ghost line + deviation wedge are activated to
+   * make the change unmistakable, and any non-relevant deviation ribbons
+   * / reference arcs are hidden so they don't compete for attention.
+   */
+  private applyErrorVisuals(): void {
+    if (!this.leftAxisLines || !this.rightAxisLines) return;
+
+    // Reset everything to fully visible, then narrow it down below.
+    this._setAllAxisLineVisibility(true);
+    this.leftErrorIndicator?.hideAll();
+    this.rightErrorIndicator?.hideAll();
+
+    if (this.mode !== 'error' || !this.selectedError) return;
+
+    const err = this.selectedError;
+
+    // Determine which sides of the car the error physically touches.
+    let leftAffected = false;
+    let rightAffected = false;
+    if (err.angle === 'Camber') {
+      leftAffected = (err.state.leftCamber ?? 0) !== 0;
+      rightAffected = (err.state.rightCamber ?? 0) !== 0;
+      // Cross-camber sets both, handle the rare "neither set" case by
+      // falling back to whichever side actually differs from spec.
+      if (!leftAffected && !rightAffected) {
+        leftAffected = this.leftCamber !== CarViewerComponent.IDEAL_CAMBER;
+        rightAffected = this.rightCamber !== CarViewerComponent.IDEAL_CAMBER;
+      }
+    } else {
+      // All other categories are symmetric in the error data.
+      leftAffected = true;
+      rightAffected = true;
+    }
+
+    // Hide everything first; we'll re-enable only the relevant parts.
+    this._setAllAxisLineVisibility(false);
+
+    switch (err.angle) {
+      case 'Camber': {
+        if (leftAffected) {
+          this.leftAxisLines.camberLine.visible = true;
+          this.leftErrorIndicator?.showCamber(this.leftCamber, CarViewerComponent.IDEAL_CAMBER);
+        }
+        if (rightAffected) {
+          this.rightAxisLines.camberLine.visible = true;
+          this.rightErrorIndicator?.showCamber(this.rightCamber, CarViewerComponent.IDEAL_CAMBER);
+        }
+        break;
+      }
+      case 'Toe': {
+        this.leftAxisLines.toeLine.visible = true;
+        this.leftAxisLines.toeTipFront.visible = true;
+        this.rightAxisLines.toeLine.visible = true;
+        this.rightAxisLines.toeTipFront.visible = true;
+        this.leftErrorIndicator?.showToe(this.leftToe, CarViewerComponent.IDEAL_TOE);
+        this.rightErrorIndicator?.showToe(this.rightToe, CarViewerComponent.IDEAL_TOE);
+        break;
+      }
+      case 'Caster': {
+        this.leftAxisLines.casterLine.visible = true;
+        this.rightAxisLines.casterLine.visible = true;
+        // Spindle deviation ribbons help visualize how caster changes the
+        // spindle path during steering, keep them on for caster errors.
+        this.leftSpindleRibbon?.setVisible(true);
+        this.rightSpindleRibbon?.setVisible(true);
+        if (this.leftSpindleReferenceArc) this.leftSpindleReferenceArc.visible = true;
+        if (this.rightSpindleReferenceArc) this.rightSpindleReferenceArc.visible = true;
+        this.leftErrorIndicator?.showSteeringAxis(
+          this.casterAngle, this.saiAngle,
+          CarViewerComponent.IDEAL_CASTER, this.saiAngle
+        );
+        this.rightErrorIndicator?.showSteeringAxis(
+          this.casterAngle, this.saiAngle,
+          CarViewerComponent.IDEAL_CASTER, this.saiAngle
+        );
+        break;
+      }
+      case 'SAI': {
+        this.leftAxisLines.casterLine.visible = true;
+        this.rightAxisLines.casterLine.visible = true;
+        this.leftSpindleRibbon?.setVisible(true);
+        this.rightSpindleRibbon?.setVisible(true);
+        if (this.leftSpindleReferenceArc) this.leftSpindleReferenceArc.visible = true;
+        if (this.rightSpindleReferenceArc) this.rightSpindleReferenceArc.visible = true;
+        this.leftErrorIndicator?.showSteeringAxis(
+          this.casterAngle, this.saiAngle,
+          this.casterAngle, CarViewerComponent.IDEAL_SAI
+        );
+        this.rightErrorIndicator?.showSteeringAxis(
+          this.casterAngle, this.saiAngle,
+          this.casterAngle, CarViewerComponent.IDEAL_SAI
+        );
+        break;
+      }
+      case 'ScrubRadius': {
+        // Scrub-radius scenarios don't change any slider in the data, so
+        // there is no deviation to draw, just leave the steering axis
+        // and spindle line visible so the user can see where it meets the
+        // road plane.
+        this.leftAxisLines.casterLine.visible = true;
+        this.rightAxisLines.casterLine.visible = true;
+        this.leftAxisLines.spindleLine.visible = true;
+        this.leftAxisLines.spindleTip.visible = true;
+        this.rightAxisLines.spindleLine.visible = true;
+        this.rightAxisLines.spindleTip.visible = true;
+        break;
+      }
+    }
+  }
+
+  /**
+   * Bulk show/hide every axis line, deviation ribbon, reference arc and
+   * tip sphere across both wheels. Used by {@link applyErrorVisuals} as a
+   * starting point before re-enabling the items relevant to the active
+   * error category.
+   */
+  private _setAllAxisLineVisibility(visible: boolean): void {
+    const sides: (AxisLines | null)[] = [this.leftAxisLines, this.rightAxisLines];
+    for (const ax of sides) {
+      if (!ax) continue;
+      ax.camberLine.visible = visible;
+      ax.casterLine.visible = visible;
+      ax.toeLine.visible = visible;
+      ax.toeTipFront.visible = visible;
+      ax.spindleLine.visible = visible;
+      ax.spindleTip.visible = visible;
+    }
+    this.leftRibbon?.setVisible(visible);
+    this.rightRibbon?.setVisible(visible);
+    this.leftSpindleRibbon?.setVisible(visible);
+    this.rightSpindleRibbon?.setVisible(visible);
+    if (this.leftReferenceArc) this.leftReferenceArc.visible = visible;
+    if (this.rightReferenceArc) this.rightReferenceArc.visible = visible;
+    if (this.leftSpindleReferenceArc) this.leftSpindleReferenceArc.visible = visible;
+    if (this.rightSpindleReferenceArc) this.rightSpindleReferenceArc.visible = visible;
   }
 
   // -------------------------------------------------------------------------
@@ -639,21 +825,67 @@ export class CarViewerComponent implements OnInit {
   openDiagnostic() {
     this.showDiagnostic = true;
     this.diagResult = '';
+    this.diagSAI = null;
+    this.diagCamber = null;
+    this.diagIA = null;
   }
 
   /** Close the diagnostic-chart modal. */
   closeDiagnostic() { this.showDiagnostic = false; }
 
-  /** Run the lookup against the chosen suspension type and SAI/Camber/IA values. */
+  /** Run the lookup once all three TriState values are selected. */
   runDiagnostic() {
+    if (!this.diagSAI || !this.diagCamber || !this.diagIA) {
+      this.diagResult = '';
+      return;
+    }
     this.diagResult = lookupDiagnostic(this.diagSuspension, this.diagSAI, this.diagCamber, this.diagIA);
   }
 
-  /** Reset the three TriState toggles to OK and clear the diagnosis text. */
+  /**
+   * Is a given chart cell a dead end? A cell is "unavailable" when
+   * selecting it (while keeping the other two rows at their current
+   * values) would produce a three-way combination that does not appear
+   * in the active diagnostic table. The template uses this to fade
+   * these buttons so the user can quickly see which selections still
+   * lead to a valid diagnosis. Faded buttons remain clickable so the
+   * user can still explore freely.
+   */
+  /**
+   * Is a given chart cell a dead end given the user's current
+   * selections? A cell is "unavailable" when clicking it would
+   * produce a set of constraints (its value plus any already-picked
+   * rows; unpicked rows are wildcards) for which no row in the
+   * active diagnostic table can satisfy all constraints. Faded
+   * buttons stay clickable so the user can still backtrack.
+   */
+  isDiagOptionUnavailable(row: 'sai' | 'camber' | 'ia', value: TriState): boolean {
+    const next: { sai: TriState | null; camber: TriState | null; ia: TriState | null } = {
+      sai: row === 'sai' ? value : this.diagSAI,
+      camber: row === 'camber' ? value : this.diagCamber,
+      ia: row === 'ia' ? value : this.diagIA,
+    };
+    const table = this.diagSuspension === 'SLA' ? SLA_DIAGNOSTICS : MACPHERSON_DIAGNOSTICS;
+    return !table.some(e =>
+      (next.sai === null || e.sai === next.sai) &&
+      (next.camber === null || e.camber === next.camber) &&
+      (next.ia === null || e.ia === next.ia)
+    );
+  }
+
+  /** Called from each chart cell click before runDiagnostic(). */
+  pickDiag(row: 'sai' | 'camber' | 'ia', value: TriState): void {
+    if (row === 'sai') this.diagSAI = value;
+    else if (row === 'camber') this.diagCamber = value;
+    else this.diagIA = value;
+    this.runDiagnostic();
+  }
+
+  /** Clear all three TriState selections and the diagnosis text. */
   resetDiagnostic() {
-    this.diagSAI = 'OK';
-    this.diagCamber = 'OK';
-    this.diagIA = 'OK';
+    this.diagSAI = null;
+    this.diagCamber = null;
+    this.diagIA = null;
     this.diagResult = '';
   }
 
@@ -702,7 +934,7 @@ export class CarViewerComponent implements OnInit {
 
   /**
    * Per-frame update loop. Drives the tracer animations and renders the
-   * scene. Three.js doesn't run on its own — every visible change has to be
+   * scene. Three.js doesn't run on its own, every visible change has to be
    * sent through `renderer.render` from inside requestAnimationFrame.
    */
   animate() {
@@ -715,7 +947,7 @@ export class CarViewerComponent implements OnInit {
   }
 
   /**
-   * Pretty-print a decimal angle as degrees + arcminutes — the format that
+   * Pretty-print a decimal angle as degrees + arcminutes, the format that
    * alignment racks display, e.g. `3.5` becomes `3° 30'`.
    */
   formatDegrees(value: number): string {

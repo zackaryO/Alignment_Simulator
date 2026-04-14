@@ -4,7 +4,7 @@
  * All of the visualization aids that get attached to a {@link WheelAssembly}
  * to make alignment angles legible:
  *
- *   - Coloured "axis cylinders" — camber, steering axis, toe, spindle.
+ *   - Coloured "axis cylinders", camber, steering axis, toe, spindle.
  *   - Grey dashed reference arcs showing the path each tip *would* trace if
  *     the wheel had zero geometry.
  *   - Translucent {@link DeviationRibbon} / {@link SpindleDeviationRibbon}
@@ -31,15 +31,15 @@ export const SPINDLE_LINE_LENGTH = 2;
 
 /** The full set of axis-line meshes attached to a single wheel. */
 export interface AxisLines {
-  /** RED — vertical line in the alignment-pivot frame, shows camber. */
+  /** RED, vertical line in the alignment-pivot frame, shows camber. */
   camberLine: THREE.Mesh;
-  /** GREEN — the inclined steering axis (caster + SAI combined). */
+  /** GREEN, the inclined steering axis (caster + SAI combined). */
   casterLine: THREE.Mesh;
-  /** BLUE — long line forward/back through the wheel showing toe direction. */
+  /** BLUE, long line forward/back through the wheel showing toe direction. */
   toeLine: THREE.Mesh;
-  /** Blue sphere at the front tip of the toe line — what the tracer follows. */
+  /** Blue sphere at the front tip of the toe line, what the tracer follows. */
   toeTipFront: THREE.Mesh;
-  /** YELLOW — lateral line through the wheel hub showing the spin axis. */
+  /** YELLOW, lateral line through the wheel hub showing the spin axis. */
   spindleLine: THREE.Mesh;
   /** Yellow sphere at the outboard end of the spindle line. */
   spindleTip: THREE.Mesh;
@@ -57,19 +57,19 @@ export function createAxisLines(assembly: WheelAssembly): AxisLines {
   const radius = 0.02;
   const segments = 8;
 
-  // Camber line (RED) — vertical in alignment pivot space
+  // Camber line (RED), vertical in alignment pivot space
   const camberGeo = new THREE.CylinderGeometry(radius, radius, camberLength, segments);
   const camberLine = new THREE.Mesh(camberGeo, new THREE.MeshBasicMaterial({ color: 0xff0000 }));
   camberLine.name = 'camberLine';
   assembly.alignmentPivot.add(camberLine);
 
-  // Caster / steering axis line (GREEN) — on the assembly
+  // Caster / steering axis line (GREEN), on the assembly
   const casterGeo = new THREE.CylinderGeometry(radius, radius, camberLength, segments);
   const casterLine = new THREE.Mesh(casterGeo, new THREE.MeshBasicMaterial({ color: 0x32a852 }));
   casterLine.name = 'casterLine';
   assembly.assembly.add(casterLine);
 
-  // Toe line (BLUE) — along Z in alignment pivot space
+  // Toe line (BLUE), along Z in alignment pivot space
   const toeGeo = new THREE.CylinderGeometry(radius, radius, TOE_LINE_LENGTH, segments);
   const toeLine = new THREE.Mesh(toeGeo, new THREE.MeshBasicMaterial({ color: 0x0000ff }));
   toeLine.name = 'toeLine';
@@ -83,14 +83,14 @@ export function createAxisLines(assembly: WheelAssembly): AxisLines {
   toeTipFront.position.set(0, 0, TOE_LINE_LENGTH / 2);
   assembly.alignmentPivot.add(toeTipFront);
 
-  // Spindle line (YELLOW) — along X in alignment pivot space (lateral, the wheel's spin axis)
+  // Spindle line (YELLOW), along X in alignment pivot space (lateral, the wheel's spin axis)
   const spindleGeo = new THREE.CylinderGeometry(radius, radius, SPINDLE_LINE_LENGTH, segments);
   const spindleLine = new THREE.Mesh(spindleGeo, new THREE.MeshBasicMaterial({ color: 0xffcc00 }));
   spindleLine.name = 'spindleLine';
   spindleLine.rotation.z = Math.PI / 2; // Rotate cylinder to point along X
   assembly.alignmentPivot.add(spindleLine);
 
-  // Spindle tip sphere — at the OUTBOARD (external) end
+  // Spindle tip sphere, at the OUTBOARD (external) end
   const spindleTipGeo = new THREE.SphereGeometry(0.07, 12, 12);
   const spindleTip = new THREE.Mesh(spindleTipGeo, new THREE.MeshBasicMaterial({ color: 0xffcc00 }));
   spindleTip.name = 'spindleTip';
@@ -127,14 +127,14 @@ export function updateCasterLine(
 }
 
 // ----------------------------------------------------------------------------
-// Reference arcs — dashed lines showing where the toe-tip and spindle-tip
+// Reference arcs, dashed lines showing where the toe-tip and spindle-tip
 // would travel if the wheel had perfectly vertical steering (no caster, no
 // SAI). These are the "ideal" reference against which the deviation ribbons
 // are drawn.
 // ----------------------------------------------------------------------------
 
 /**
- * Toe-tip reference arc — the path the front of the toe line would sweep
+ * Toe-tip reference arc, the path the front of the toe line would sweep
  * through if it were rotated about a perfectly vertical axis. Lies in the
  * XZ plane in front of the wheel.
  */
@@ -164,7 +164,7 @@ export function createReferenceArc(
 }
 
 /**
- * Spindle-tip reference arc — the lateral path the outboard end of the
+ * Spindle-tip reference arc, the lateral path the outboard end of the
  * spindle line would sweep through under a vertical-axis steer. The
  * outboardSign keeps the arc on the correct side of the car for either
  * wheel.
@@ -198,7 +198,7 @@ export function createSpindleReferenceArc(
 }
 
 /**
- * Road surface plane — a 3D grid in the XZ plane that correctly represents
+ * Road surface plane, a 3D grid in the XZ plane that correctly represents
  * the ground from any camera angle. The Y position is computed from the
  * actual wheel positions so it always aligns with the tire bottoms.
  *
@@ -247,7 +247,7 @@ export function createRoadSurfacePlane(
 }
 
 // ----------------------------------------------------------------------------
-// Deviation ribbons — translucent fans showing the gap between the
+// Deviation ribbons, translucent fans showing the gap between the
 // zero-geometry reference arc and the actual path traced when the wheel is
 // rotated around the inclined steering axis. Two flavours: toe-tip (blue)
 // and spindle-tip (yellow). Both are rebuilt every frame because the
@@ -260,7 +260,7 @@ export function createRoadSurfacePlane(
  * Translucent triangle-strip fill drawn between the reference arc and the
  * actual deviated arc, plus a fine bright perimeter line so the shape stays
  * legible against the rest of the scene. Both meshes are rebuilt from
- * scratch on every {@link DeviationRibbon.update} call — buffer geometry is
+ * scratch on every {@link DeviationRibbon.update} call, buffer geometry is
  * cheap to throw away here, and it keeps the math straightforward.
  */
 export class DeviationRibbon {
@@ -293,6 +293,12 @@ export class DeviationRibbon {
     this.outline.name = 'deviationRibbonOutline';
     this.outline.renderOrder = 999;
     assembly.assembly.add(this.outline);
+  }
+
+  /** Show or hide both the fill ribbon and its outline. */
+  setVisible(visible: boolean): void {
+    this.mesh.visible = visible;
+    this.outline.visible = visible;
   }
 
   update(casterDeg: number, saiDeg: number, side: 'left' | 'right'): void {
@@ -372,7 +378,7 @@ export class SpindleDeviationRibbon {
   constructor(assembly: WheelAssembly, spindleLength: number) {
     this.spindleLength = spindleLength;
 
-    // Translucent fill ribbon — bumped opacity so it actually reads on a
+    // Translucent fill ribbon, bumped opacity so it actually reads on a
     // light background. Yellow needs more presence than blue at the same alpha.
     const geo = new THREE.BufferGeometry();
     const mat = new THREE.MeshBasicMaterial({
@@ -394,6 +400,12 @@ export class SpindleDeviationRibbon {
     this.outline.name = 'spindleDeviationRibbonOutline';
     this.outline.renderOrder = 999;
     assembly.assembly.add(this.outline);
+  }
+
+  /** Show or hide both the fill ribbon and its outline. */
+  setVisible(visible: boolean): void {
+    this.mesh.visible = visible;
+    this.outline.visible = visible;
   }
 
   update(casterDeg: number, saiDeg: number, side: 'left' | 'right'): void {
@@ -457,7 +469,7 @@ export class SpindleDeviationRibbon {
 }
 
 /**
- * Body roll / jacking indicator — a translucent vertical "column" at each
+ * Body roll / jacking indicator, a translucent vertical "column" at each
  * wheel that shows how much that corner has lifted (or dropped) from its
  * rest position. The column grows upward when the wheel jacks up.
  *
@@ -505,7 +517,7 @@ export class JackingIndicator {
 }
 
 // ----------------------------------------------------------------------------
-// Tracer — fading dot trail with runtime colour control
+// Tracer, fading dot trail with runtime colour control
 // ----------------------------------------------------------------------------
 
 /** A single tracer breadcrumb plus its birth timestamp (used for fade-out). */
@@ -517,7 +529,7 @@ interface TracerDot {
 /**
  * Drops a small sphere at a tracked tip on a fixed interval and fades each
  * sphere out over its lifetime. The result is an animated "stream of dots"
- * trail that visualizes the recent history of where the tip has been —
+ * trail that visualizes the recent history of where the tip has been , 
  * great for showing how the toe-tip path changes when the user adjusts
  * caster, SAI, toe or steering angle.
  *
@@ -574,5 +586,286 @@ export class ToeTracer {
         (dot.mesh.material as THREE.MeshBasicMaterial).opacity = 1 - age / this.lifetime;
       }
     }
+  }
+}
+
+// ----------------------------------------------------------------------------
+// Error-mode indicator, dashed "ideal" ghost lines and translucent deviation
+// wedges that highlight the gap between the actual axis position (driven by
+// the selected error scenario) and where that axis would be at factory spec.
+//
+// One ErrorIndicator is built per wheel and parented into the same pivot
+// hierarchy as the regular axis lines, so steering rotates everything as a
+// unit. All meshes start hidden, the component drives visibility via the
+// show*() methods when an error is selected and hideAll() when it is cleared.
+// ----------------------------------------------------------------------------
+
+/**
+ * Per-wheel collection of dashed "ideal-position" ghost lines and their
+ * matching translucent deviation wedges. Used by the Errors-mode UI to make
+ * the physical change of a selected error obvious, without an explicit
+ * before/after indicator, exaggerated camber/toe shifts are easy to miss.
+ *
+ * Three independent ghost+wedge pairs cover the angle categories:
+ *   - Camber: vertical reference under the alignment pivot's parent (the
+ *     turn pivot), drawn in the wheel's frontal plane.
+ *   - Toe: forward-pointing reference under the turn pivot, drawn in the
+ *     wheel's top plane.
+ *   - Steering axis: tilted reference under the assembly, used for both
+ *     Caster and SAI errors (they share the same physical line).
+ */
+export class ErrorIndicator {
+  private side: 'left' | 'right';
+
+  // Camber: dashed vertical line + wedge in the frontal (XY) plane
+  private camberGhost: THREE.Line;
+  private camberWedge: THREE.Mesh;
+
+  // Toe: dashed forward line + wedge in the top (XZ) plane
+  private toeGhost: THREE.Line;
+  private toeWedge: THREE.Mesh;
+
+  // Steering axis: dashed inclined line + 3D wedge between ideal & actual axes
+  private steerGhost: THREE.Line;
+  private steerWedge: THREE.Mesh;
+
+  constructor(assembly: WheelAssembly) {
+    this.side = assembly.side;
+
+    const dashMat = () => new THREE.LineDashedMaterial({
+      color: 0x222222, dashSize: 0.08, gapSize: 0.05,
+      transparent: true, opacity: 0.95, depthTest: false
+    });
+
+    // ----- Camber ghost (vertical Y, parented under turnPivot so it does
+    // not pick up the camber rotation but DOES follow steering) -----
+    const camberLength = 2;
+    const camberPts = [
+      new THREE.Vector3(0, -camberLength / 2, 0),
+      new THREE.Vector3(0,  camberLength / 2, 0)
+    ];
+    this.camberGhost = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(camberPts), dashMat()
+    );
+    this.camberGhost.computeLineDistances();
+    this.camberGhost.name = 'camberGhost';
+    this.camberGhost.renderOrder = 1001;
+    this.camberGhost.visible = false;
+    assembly.turnPivot.add(this.camberGhost);
+
+    this.camberWedge = new THREE.Mesh(
+      new THREE.BufferGeometry(),
+      new THREE.MeshBasicMaterial({
+        color: 0xff3333, transparent: true, opacity: 0.4,
+        side: THREE.DoubleSide, depthTest: false
+      })
+    );
+    this.camberWedge.name = 'camberWedge';
+    this.camberWedge.renderOrder = 1000;
+    this.camberWedge.visible = false;
+    assembly.turnPivot.add(this.camberWedge);
+
+    // ----- Toe ghost (forward Z, parented under turnPivot) -----
+    const toePts = [
+      new THREE.Vector3(0, 0, -TOE_LINE_LENGTH / 2),
+      new THREE.Vector3(0, 0,  TOE_LINE_LENGTH / 2)
+    ];
+    this.toeGhost = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(toePts), dashMat()
+    );
+    this.toeGhost.computeLineDistances();
+    this.toeGhost.name = 'toeGhost';
+    this.toeGhost.renderOrder = 1001;
+    this.toeGhost.visible = false;
+    assembly.turnPivot.add(this.toeGhost);
+
+    this.toeWedge = new THREE.Mesh(
+      new THREE.BufferGeometry(),
+      new THREE.MeshBasicMaterial({
+        color: 0x3366ff, transparent: true, opacity: 0.4,
+        side: THREE.DoubleSide, depthTest: false
+      })
+    );
+    this.toeWedge.name = 'toeWedge';
+    this.toeWedge.renderOrder = 1000;
+    this.toeWedge.visible = false;
+    assembly.turnPivot.add(this.toeWedge);
+
+    // ----- Steering axis ghost (parented to assembly so it survives steering) -----
+    const steerPts = [
+      new THREE.Vector3(0, -camberLength / 2, 0),
+      new THREE.Vector3(0,  camberLength / 2, 0)
+    ];
+    this.steerGhost = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(steerPts), dashMat()
+    );
+    this.steerGhost.computeLineDistances();
+    this.steerGhost.name = 'steerGhost';
+    this.steerGhost.renderOrder = 1001;
+    this.steerGhost.visible = false;
+    assembly.assembly.add(this.steerGhost);
+
+    this.steerWedge = new THREE.Mesh(
+      new THREE.BufferGeometry(),
+      new THREE.MeshBasicMaterial({
+        color: 0x33cc66, transparent: true, opacity: 0.4,
+        side: THREE.DoubleSide, depthTest: false
+      })
+    );
+    this.steerWedge.name = 'steerWedge';
+    this.steerWedge.renderOrder = 1000;
+    this.steerWedge.visible = false;
+    assembly.assembly.add(this.steerWedge);
+  }
+
+  /** Hide every ghost and wedge, used on clear / mode switch. */
+  hideAll(): void {
+    this.camberGhost.visible = false;
+    this.camberWedge.visible = false;
+    this.toeGhost.visible = false;
+    this.toeWedge.visible = false;
+    this.steerGhost.visible = false;
+    this.steerWedge.visible = false;
+  }
+
+  /**
+   * Reveal the camber ghost line and the wedge between the current and
+   * ideal camber angles. The wedge fans out in the wheel's frontal plane
+   * (XY in alignment-pivot space) so the angular gap reads at a glance
+   * from the front of the car.
+   */
+  showCamber(currentCamberDeg: number, idealCamberDeg: number): void {
+    this.hideAll();
+    this.camberGhost.visible = true;
+    this.camberWedge.visible = true;
+
+    // Same sign convention as WheelAssembly._updateAlignment so the wedge
+    // matches the direction the camberLine actually tilts on this side.
+    const camberSign = this.side === 'left' ? -1 : 1;
+    const idealRad = camberSign * THREE.MathUtils.degToRad(idealCamberDeg);
+    const actualRad = camberSign * THREE.MathUtils.degToRad(currentCamberDeg);
+
+    this._buildWedgeXY(this.camberWedge, idealRad, actualRad, 1);
+  }
+
+  /**
+   * Reveal the toe ghost line and the wedge between the current and ideal
+   * toe angles. Wedge fans out in the wheel's top plane (XZ in alignment-
+   * pivot space).
+   */
+  showToe(currentToeDeg: number, idealToeDeg: number): void {
+    this.hideAll();
+    this.toeGhost.visible = true;
+    this.toeWedge.visible = true;
+
+    // Same toe-sign convention as WheelAssembly._updateAlignment.
+    const toeSign = this.side === 'left' ? -1 : 1;
+    const idealRad = toeSign * THREE.MathUtils.degToRad(idealToeDeg);
+    const actualRad = toeSign * THREE.MathUtils.degToRad(currentToeDeg);
+
+    this._buildWedgeXZ(this.toeWedge, idealRad, actualRad, TOE_LINE_LENGTH / 2);
+  }
+
+  /**
+   * Reveal the steering-axis ghost (oriented to the ideal caster + SAI
+   * combination) and a 3D wedge slerped between the ideal and actual
+   * inclined-axis vectors. Used for both Caster and SAI errors.
+   */
+  showSteeringAxis(
+    currentCasterDeg: number, currentSAIDeg: number,
+    idealCasterDeg: number, idealSAIDeg: number
+  ): void {
+    this.hideAll();
+    this.steerGhost.visible = true;
+    this.steerWedge.visible = true;
+
+    const saiSign = this.side === 'left' ? -1 : 1;
+    const buildAxis = (casterDeg: number, saiDeg: number) => {
+      const cR = THREE.MathUtils.degToRad(casterDeg);
+      const sR = THREE.MathUtils.degToRad(saiDeg);
+      return new THREE.Vector3(
+        Math.sin(sR) * saiSign,
+        Math.cos(cR) * Math.cos(sR),
+        -Math.sin(cR)
+      ).normalize();
+    };
+
+    const idealAxis = buildAxis(idealCasterDeg, idealSAIDeg);
+    const actualAxis = buildAxis(currentCasterDeg, currentSAIDeg);
+
+    // Reorient ghost line (initially along +Y) onto the ideal axis.
+    const up = new THREE.Vector3(0, 1, 0);
+    this.steerGhost.quaternion.setFromUnitVectors(up, idealAxis);
+
+    // Build the deviation wedge by slerping a unit-up vector through the
+    // rotation between idealAxis and actualAxis. This handles arbitrary 3D
+    // gaps between the two inclined axes (caster + SAI vary independently).
+    const r = 1;
+    const segments = 12;
+    const idealQuat = new THREE.Quaternion().setFromUnitVectors(up, idealAxis);
+    const actualQuat = new THREE.Quaternion().setFromUnitVectors(up, actualAxis);
+    const positions: number[] = [0, 0, 0];
+    const indices: number[] = [];
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const q = new THREE.Quaternion().slerpQuaternions(idealQuat, actualQuat, t);
+      const v = up.clone().multiplyScalar(r).applyQuaternion(q);
+      positions.push(v.x, v.y, v.z);
+    }
+    for (let i = 0; i < segments; i++) indices.push(0, i + 1, i + 2);
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setIndex(indices);
+    this.steerWedge.geometry.dispose();
+    this.steerWedge.geometry = geo;
+  }
+
+  /**
+   * Build a triangle-fan wedge in the XY plane (Z=0). Vertex 0 is the
+   * origin; the rim sweeps from `fromRad` to `toRad` measured from the +Y
+   * axis (matching the camber-line orientation). Z-rotation convention:
+   *   x = -r·sin(angle), y = r·cos(angle)
+   */
+  private _buildWedgeXY(mesh: THREE.Mesh, fromRad: number, toRad: number, r: number): void {
+    const segments = 8;
+    const positions: number[] = [0, 0, 0];
+    const indices: number[] = [];
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const a = fromRad + (toRad - fromRad) * t;
+      positions.push(-r * Math.sin(a), r * Math.cos(a), 0);
+    }
+    for (let i = 0; i < segments; i++) indices.push(0, i + 1, i + 2);
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setIndex(indices);
+    mesh.geometry.dispose();
+    mesh.geometry = geo;
+  }
+
+  /**
+   * Build a triangle-fan wedge in the XZ plane (Y=0). Vertex 0 is the
+   * origin; the rim sweeps from `fromRad` to `toRad` measured from the +Z
+   * axis (matching the toe-line orientation). Y-rotation convention:
+   *   x = r·sin(angle), z = r·cos(angle)
+   */
+  private _buildWedgeXZ(mesh: THREE.Mesh, fromRad: number, toRad: number, r: number): void {
+    const segments = 8;
+    const positions: number[] = [0, 0, 0];
+    const indices: number[] = [];
+    for (let i = 0; i <= segments; i++) {
+      const t = i / segments;
+      const a = fromRad + (toRad - fromRad) * t;
+      positions.push(r * Math.sin(a), 0, r * Math.cos(a));
+    }
+    for (let i = 0; i < segments; i++) indices.push(0, i + 1, i + 2);
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    geo.setIndex(indices);
+    mesh.geometry.dispose();
+    mesh.geometry = geo;
   }
 }
