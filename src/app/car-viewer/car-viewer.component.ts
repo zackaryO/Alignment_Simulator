@@ -37,7 +37,7 @@ import { WheelAssembly } from './wheel-assembly';
 import {
   createAxisLines, updateCasterLine, createReferenceArc, createSpindleReferenceArc,
   createRoadSurfacePlane, DeviationRibbon, SpindleDeviationRibbon,
-  JackingIndicator, AxisLines, ToeTracer, ErrorIndicator,
+  JackingIndicator, AxisLines, ToeTracer, ErrorIndicator, ScrubIndicator,
   TOE_LINE_LENGTH, SPINDLE_LINE_LENGTH
 } from './axis-lines';
 import {
@@ -111,6 +111,10 @@ export class CarViewerComponent implements OnInit {
   leftErrorIndicator: ErrorIndicator | null = null;
   /** Per-error ghost lines + deviation wedges (right wheel). */
   rightErrorIndicator: ErrorIndicator | null = null;
+  /** Ground-level scrub-radius visualization (left wheel). */
+  leftScrubIndicator: ScrubIndicator | null = null;
+  /** Ground-level scrub-radius visualization (right wheel). */
+  rightScrubIndicator: ScrubIndicator | null = null;
   /** Dashed reference arc for the left toe tip, toggled per error category. */
   leftReferenceArc: THREE.Line | null = null;
   /** Dashed reference arc for the right toe tip, toggled per error category. */
@@ -370,6 +374,10 @@ export class CarViewerComponent implements OnInit {
         this.leftErrorIndicator = new ErrorIndicator(this.leftWheelAssembly);
         this.rightErrorIndicator = new ErrorIndicator(this.rightWheelAssembly);
 
+        // Ground-level scrub-radius indicators (only shown for ScrubRadius faults)
+        this.leftScrubIndicator = new ScrubIndicator(this.leftWheelAssembly);
+        this.rightScrubIndicator = new ScrubIndicator(this.rightWheelAssembly);
+
         // Capture wheel assembly REST positions in world space.
         // When carModel rolls/lifts, we'll counter-translate the assemblies
         // in carModel local space so the wheels stay at these positions.
@@ -516,6 +524,14 @@ export class CarViewerComponent implements OnInit {
     this.rightRibbon?.update(this.casterAngle, this.saiAngle, 'right');
     this.leftSpindleRibbon?.update(this.casterAngle, this.saiAngle, 'left');
     this.rightSpindleRibbon?.update(this.casterAngle, this.saiAngle, 'right');
+
+    // Keep the scrub-radius overlay tracking current SAI, caster and
+    // the wheel's true visual centerline so the dashed tire centerline
+    // and the ground markers stay locked to the actual tire.
+    const leftTireX = this.leftWheelAssembly?.getTireCenterlineX() ?? 0;
+    const rightTireX = this.rightWheelAssembly?.getTireCenterlineX() ?? 0;
+    this.leftScrubIndicator?.update(this.casterAngle, this.saiAngle, leftTireX);
+    this.rightScrubIndicator?.update(this.casterAngle, this.saiAngle, rightTireX);
 
     this.updateTracerColors();
     this.updateStatus();
@@ -691,6 +707,13 @@ export class CarViewerComponent implements OnInit {
     this._setAllAxisLineVisibility(true);
     this.leftErrorIndicator?.hideAll();
     this.rightErrorIndicator?.hideAll();
+    // Scrub-radius indicators and wheel offsets are scrub-specific;
+    // clear them on every transition so they never bleed into other
+    // scenarios.
+    this.leftScrubIndicator?.setVisible(false);
+    this.rightScrubIndicator?.setVisible(false);
+    this.leftWheelAssembly?.setWheelOffset(0);
+    this.rightWheelAssembly?.setWheelOffset(0);
 
     if (this.mode !== 'error' || !this.selectedError) return;
 
@@ -775,16 +798,34 @@ export class CarViewerComponent implements OnInit {
         break;
       }
       case 'ScrubRadius': {
-        // Scrub-radius scenarios don't change any slider in the data, so
-        // there is no deviation to draw, just leave the steering axis
-        // and spindle line visible so the user can see where it meets the
-        // road plane.
+        // SAI stays at 10 deg for all three scenarios. The wheel itself
+        // shifts laterally, as it would on a real car fitted with an
+        // aftermarket wheel whose centerline is at a different ET value.
+        // saiX for SAI=10 deg is about 0.062 in assembly-local units,
+        // so these offsets straddle that reference to make each
+        // scenario clearly positive, zero or negative scrub.
+        const offsetLocal =
+          err.id === 'scrub-pos' ? 0.11 :   // wheel pushed outboard of SAI-at-road
+          err.id === 'scrub-neg' ? 0.01 :   // wheel pulled inboard of SAI-at-road
+          0.062;                             // wheel lands exactly on SAI-at-road
+
+        this.leftWheelAssembly?.setWheelOffset(offsetLocal);
+        this.rightWheelAssembly?.setWheelOffset(offsetLocal);
+
         this.leftAxisLines.casterLine.visible = true;
         this.rightAxisLines.casterLine.visible = true;
-        this.leftAxisLines.spindleLine.visible = true;
-        this.leftAxisLines.spindleTip.visible = true;
-        this.rightAxisLines.spindleLine.visible = true;
-        this.rightAxisLines.spindleTip.visible = true;
+        this.leftScrubIndicator?.setVisible(true);
+        this.rightScrubIndicator?.setVisible(true);
+
+        // Re-run the scrub indicator update here *after* the wheel has
+        // moved, so the dashed line, markers and shade reflect the new
+        // tire centerline on the first click (not the second). The
+        // earlier updateAllWheels() call used the stale pre-move
+        // centerline because the wheel had not shifted yet.
+        const leftTireX = this.leftWheelAssembly?.getTireCenterlineX() ?? 0;
+        const rightTireX = this.rightWheelAssembly?.getTireCenterlineX() ?? 0;
+        this.leftScrubIndicator?.update(this.casterAngle, this.saiAngle, leftTireX);
+        this.rightScrubIndicator?.update(this.casterAngle, this.saiAngle, rightTireX);
         break;
       }
     }

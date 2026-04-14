@@ -171,7 +171,7 @@ export const ERROR_DEFINITIONS: AlignmentError[] = [
     description: 'SAI line meets the road inboard of the tire centerline. Most common configuration.',
     drivingEffect: 'Stable straight-ahead driving but requires counter-steering during unequal braking. Pushes toe inward when braking.',
     tireWear: 'None directly.',
-    state: {}
+    state: { sai: 10 }
   },
   {
     id: 'scrub-neg',
@@ -180,7 +180,7 @@ export const ERROR_DEFINITIONS: AlignmentError[] = [
     description: 'SAI line meets the road outboard of the tire centerline. Used with ABS for stability.',
     drivingEffect: 'Steering automatically counter-steers during uneven braking, so the driver only lightly holds the wheel. Pulls toe outward when braking.',
     tireWear: 'None directly.',
-    state: {}
+    state: { sai: 10 }
   },
   {
     id: 'scrub-zero',
@@ -189,7 +189,7 @@ export const ERROR_DEFINITIONS: AlignmentError[] = [
     description: 'SAI line meets the road exactly at the tire centerline.',
     drivingEffect: 'Isolates the steering from uneven braking and tire faults, at the cost of a noticeably stiff wheel when the car is not rolling. Also reduces steering feedback, removing some of the driver\'s feel of the road.',
     tireWear: 'None directly.',
-    state: {}
+    state: { sai: 10 }
   }
 ];
 

@@ -869,3 +869,197 @@ export class ErrorIndicator {
     mesh.geometry = geo;
   }
 }
+
+// ----------------------------------------------------------------------------
+// Scrub radius indicator, for the ScrubRadius fault scenarios. Draws two
+// small spheres at road level, one at the point where the extended SAI line
+// meets the ground and one at the tire contact patch centerline, plus a
+// horizontal coloured bar between them so the scrub radius itself is visible
+// as an angular gap on the road surface. The tire centerline position is
+// driven by the wheel mesh's lateral offset (set by WheelAssembly
+// setWheelOffset), since in real vehicles scrub changes are produced by
+// aftermarket wheels with a different ET value, not by changes to the
+// steering axis inclination.
+// ----------------------------------------------------------------------------
+
+/**
+ * Per-wheel ground-level visualization of scrub radius. Hidden unless the
+ * user selects a ScrubRadius fault scenario. Positions update every frame
+ * from the live caster, SAI and wheel-offset values, so the gap on screen
+ * is always the actual geometric scrub produced by the current setup.
+ *
+ * Reading the visualization from the front of the car:
+ *   1. The green steering axis cylinder is already drawn by the axis
+ *      lines; a green sphere here marks the point where that axis,
+ *      extended downward, intersects the road.
+ *   2. A vertical dash-dot black line runs through the center of the
+ *      tire from top to road, showing the tire's centerline.
+ *   3. A black sphere on the road marks where that tire centerline
+ *      meets the road.
+ *   4. A horizontal coloured bar on the road spans the gap between
+ *      those two ground points. That gap is the scrub radius itself.
+ */
+export class ScrubIndicator {
+  private side: 'left' | 'right';
+  private group: THREE.Group;
+  private saiMarker: THREE.Mesh;
+  private tireMarker: THREE.Mesh;
+  private tireCenterline: THREE.Line;
+  private bar: THREE.Mesh;
+  private shade: THREE.Mesh;
+
+  /** Approximate wheel radius in assembly-local space (world 0.525 / scale 1.5). */
+  private readonly wheelRadiusLocal = 0.35;
+
+  constructor(assembly: WheelAssembly) {
+    this.side = assembly.side;
+    this.group = new THREE.Group();
+    this.group.name = `scrubIndicator_${this.side}`;
+    this.group.visible = false;
+    this.group.renderOrder = 1002;
+    assembly.assembly.add(this.group);
+
+    // Vertical dash-dot line through the tire representing the tire
+    // centerline, from tire top to road. Its X position is updated
+    // every frame to follow the wheel offset.
+    const clMat = new THREE.LineDashedMaterial({
+      color: 0x111111, dashSize: 0.05, gapSize: 0.035,
+      transparent: true, opacity: 0.9, depthTest: false
+    });
+    const clPts = [
+      new THREE.Vector3(0,  this.wheelRadiusLocal, 0),
+      new THREE.Vector3(0, -this.wheelRadiusLocal, 0)
+    ];
+    this.tireCenterline = new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(clPts), clMat
+    );
+    this.tireCenterline.computeLineDistances();
+    this.tireCenterline.name = 'scrubTireCenterline';
+    this.tireCenterline.renderOrder = 1003;
+    this.group.add(this.tireCenterline);
+
+    // Translucent shaded quad filling the area between the tire centerline
+    // and the SAI line, from the top of the tire down to the road. Colour
+    // tracks the scrub direction. Geometry is rebuilt each frame by update().
+    this.shade = new THREE.Mesh(
+      new THREE.BufferGeometry(),
+      new THREE.MeshBasicMaterial({
+        color: 0xff8800, transparent: true, opacity: 0.35,
+        side: THREE.DoubleSide, depthTest: false
+      })
+    );
+    this.shade.name = 'scrubShade';
+    this.shade.renderOrder = 1001;
+    this.group.add(this.shade);
+
+    // Small green sphere where the steering axis, extended downward, meets the road.
+    this.saiMarker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.025, 12, 12),
+      new THREE.MeshBasicMaterial({ color: 0x32a852, depthTest: false })
+    );
+    this.saiMarker.name = 'scrubSAIMarker';
+    this.saiMarker.renderOrder = 1004;
+    this.group.add(this.saiMarker);
+
+    // Small black sphere where the tire centerline meets the road.
+    this.tireMarker = new THREE.Mesh(
+      new THREE.SphereGeometry(0.025, 12, 12),
+      new THREE.MeshBasicMaterial({ color: 0x111111, depthTest: false })
+    );
+    this.tireMarker.name = 'scrubTireMarker';
+    this.tireMarker.renderOrder = 1004;
+    this.group.add(this.tireMarker);
+
+    // Horizontal coloured bar on the road plane spanning the scrub gap.
+    // A thin flat box reads better than a line because the scene lets the
+    // user orbit; from any non-edge-on angle, a box stays visible.
+    this.bar = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 0.008, 0.04),
+      new THREE.MeshBasicMaterial({
+        color: 0xff8800, transparent: true, opacity: 0.95, depthTest: false
+      })
+    );
+    this.bar.name = 'scrubBar';
+    this.bar.renderOrder = 1003;
+    this.group.add(this.bar);
+  }
+
+  setVisible(visible: boolean): void {
+    this.group.visible = visible;
+  }
+
+  /**
+   * Recompute marker, bar, shade and dashed-line positions from the
+   * current SAI, caster and the true tire centerline X in assembly-
+   * local space. The tire centerline X must be derived from the wheel
+   * mesh's world bounding box (see WheelAssembly.getTireCenterlineX)
+   * so the dashed line stays locked to the actual visual center of the
+   * wheel regardless of GLTF pivot offsets or scale flips.
+   */
+  update(casterDeg: number, saiDeg: number, tireCenterlineXLocal: number): void {
+    const saiSign = this.side === 'left' ? -1 : 1;
+    const outboardSign = this.side === 'left' ? 1 : -1;
+    const casterRad = THREE.MathUtils.degToRad(casterDeg);
+    const saiRad = THREE.MathUtils.degToRad(saiDeg);
+
+    // Inclined steering-axis components (same construction used everywhere else).
+    const axisX = Math.sin(saiRad) * saiSign;
+    const axisY = Math.cos(casterRad) * Math.cos(saiRad);
+
+    // Where the SAI line, extended downward from the hub, meets the road.
+    const saiX = axisY !== 0 ? -this.wheelRadiusLocal * (axisX / axisY) : 0;
+    // Tire centerline X comes straight from the wheel mesh's visual
+    // bounding-box center so the dashed line is always through the
+    // middle of the visible tire.
+    const tireX = tireCenterlineXLocal;
+    const y = -this.wheelRadiusLocal;
+
+    this.saiMarker.position.set(saiX, y, 0);
+    this.tireMarker.position.set(tireX, y, 0);
+    this.tireCenterline.position.x = tireX;
+
+    const gap = tireX - saiX;
+    const barLength = Math.abs(gap);
+
+    if (barLength > 0.005) {
+      this.bar.visible = true;
+      this.bar.scale.x = barLength;
+      this.bar.position.set((saiX + tireX) / 2, y, 0);
+    } else {
+      this.bar.visible = false;
+    }
+
+    // Rebuild the shaded quad between the tire centerline (vertical at
+    // x = tireX) and the SAI line (passes through the hub at y = 0 with
+    // x = +saiX at y = -wheelRadiusLocal and x = -saiX at y = +wheelRadiusLocal).
+    // Four corners, two triangles. Kept in the XY plane so it faces the
+    // camera from the front of the car.
+    const yTop = this.wheelRadiusLocal;
+    const yBot = -this.wheelRadiusLocal;
+    const saiXTop = -saiX;
+    const saiXBot = saiX;
+    const positions = [
+      tireX,   yTop, 0,  // V0: tire centerline top
+      saiXTop, yTop, 0,  // V1: SAI line at top
+      saiXBot, yBot, 0,  // V2: SAI line at ground
+      tireX,   yBot, 0,  // V3: tire centerline at ground
+    ];
+    const indices = [0, 1, 2, 0, 2, 3];
+    const shadeGeo = new THREE.BufferGeometry();
+    shadeGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+    shadeGeo.setIndex(indices);
+    this.shade.geometry.dispose();
+    this.shade.geometry = shadeGeo;
+
+    // Colour-code by scrub direction. Positive scrub: tire centerline is
+    // outboard of the SAI-at-road point. Negative scrub: tire centerline
+    // is inboard of the SAI-at-road point. Zero: effectively aligned.
+    const tireIsOutboardOfSai = gap * outboardSign > 0;
+    let color: number;
+    if (barLength < 0.005) color = 0x888888;
+    else if (tireIsOutboardOfSai) color = 0x22cc44;
+    else color = 0xcc2244;
+    (this.bar.material as THREE.MeshBasicMaterial).color.setHex(color);
+    (this.shade.material as THREE.MeshBasicMaterial).color.setHex(color);
+  }
+}

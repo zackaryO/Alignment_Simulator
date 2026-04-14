@@ -204,7 +204,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 2px 10px;
   background: linear-gradient(90deg, rgba(255,193,7,0.18), rgba(255,193,7,0.06));
   border-top: 2px solid #ffc107;
   flex-shrink: 0;
@@ -212,7 +212,7 @@
 
 .steering-row input[type="range"] {
   flex: 1;
-  height: 28px;
+  height: 20px;
   margin: 0;
 }
 
@@ -307,8 +307,8 @@ label {
 .error-grid {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 6px 10px 4px;
+  gap: 2px;
+  padding: 2px 10px 2px;
   background: #f8f9fa;
   border-top: 1px solid #dee2e6;
   flex-shrink: 0;
@@ -317,8 +317,8 @@ label {
 .error-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 30px;
+  gap: 6px;
+  min-height: 22px;
 }
 
 .error-row-label {
@@ -341,8 +341,10 @@ label {
 }
 
 .err-btn {
-  padding: 6px 6px;
+  padding: 2px 6px;
   font-size: 11px;
+  line-height: 1.2;
+  min-height: 22px;
   background: white;
   color: #343a40;
   border: 1px solid #ced4da;
@@ -372,7 +374,7 @@ label {
 .error-actions {
   display: flex;
   gap: 8px;
-  padding: 4px 10px 8px;
+  padding: 2px 10px 4px;
   background: #f8f9fa;
   flex-shrink: 0;
 }
@@ -380,8 +382,9 @@ label {
 .error-actions .reset-btn,
 .error-actions .diag-btn {
   margin-top: 0;
-  padding: 8px 10px;
-  font-size: 13px;
+  padding: 4px 10px;
+  font-size: 12px;
+  min-height: 28px;
 }
 
 /* ==========================================================================
@@ -553,7 +556,7 @@ label {
   .legend { font-size: 11px; padding: 8px 12px; max-width: 30%; }
 
   .error-row-label { width: 70px; font-size: 12px; }
-  .err-btn { font-size: 12px; padding: 7px 8px; min-height: 32px; }
+  .err-btn { font-size: 12px; padding: 3px 8px; min-height: 24px; }
 
   .modal { max-width: 600px; }
 }

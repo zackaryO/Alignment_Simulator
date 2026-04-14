@@ -130,8 +130,23 @@ export class WheelAssembly {
     // Strip residual toe (Y) and camber (Z), keep only spin axis (X)
     wheel.rotation.set(euler.x, 0, 0, euler.order);
 
-    console.log(`[${side}] stripped Y=${THREE.MathUtils.radToDeg(euler.y).toFixed(1)}° Z=${THREE.MathUtils.radToDeg(euler.z).toFixed(1)}°, kept X=${THREE.MathUtils.radToDeg(euler.x).toFixed(1)}°`);
+    // Cache the wheel mesh's natural lateral position after reparenting so
+    // that setWheelOffset can apply lateral shifts *relative* to the
+    // factory spot rather than overwriting it. Without this, a call like
+    // setWheelOffset(0) would teleport the wheel to x=0 in pivot-local
+    // space, which is not generally the same as its factory position.
+    this._wheelMeshBaseX = wheel.position.x;
+
+    // Also cache the tire centerline X in assembly-local from the wheel's
+    // actual world bounding box. This is the value the scrub-radius
+    // indicator will lock its dashed centerline to.
+    this._updateTireCenterlineCache();
+
+    console.log(`[${side}] stripped Y=${THREE.MathUtils.radToDeg(euler.y).toFixed(1)}° Z=${THREE.MathUtils.radToDeg(euler.z).toFixed(1)}°, kept X=${THREE.MathUtils.radToDeg(euler.x).toFixed(1)}°, baseX=${this._wheelMeshBaseX.toFixed(3)}, tireCenterlineX=${this._tireCenterlineXLocal.toFixed(3)}`);
   }
+
+  /** Factory lateral position of the wheel mesh inside alignmentPivot. */
+  private _wheelMeshBaseX = 0;
 
   /** Set caster angle (degrees). Recomputes the steering-axis quaternion. */
   setCaster(degrees: number): void {
@@ -171,6 +186,72 @@ export class WheelAssembly {
    */
   setVerticalLift(lift: number): void {
     this.assembly.position.y = this._restY + lift;
+  }
+
+  /** Lateral offset of the wheel mesh from its stock hub position, in
+   *  assembly-local units. Positive values push the tire outboard. */
+  private _wheelOffsetLocal = 0;
+
+  /**
+   * Simulate an aftermarket wheel with a different offset (ET) than the
+   * stock wheel by translating the wheel mesh laterally within the
+   * alignment pivot. The suspension hard points, ball joints and thus
+   * the SAI line all stay in their factory positions; only the tire
+   * centerline shifts. This is how scrub radius actually changes on a
+   * real vehicle: the owner installs a wheel with a different centerline
+   * and the distance between the steering axis at the road and the tire
+   * centerline grows or shrinks.
+   *
+   * @param outboardOffsetLocal Positive values move the tire outboard,
+   *   negative values pull it inboard. Units are assembly-local (the
+   *   carModel has scale 1.5, so 0.1 here is roughly 15 cm at world
+   *   scale). Pass 0 to restore the stock position.
+   */
+  setWheelOffset(outboardOffsetLocal: number): void {
+    this._wheelOffsetLocal = outboardOffsetLocal;
+    const outboardSign = this.side === 'left' ? 1 : -1;
+    this.wheelMesh.position.x = this._wheelMeshBaseX + outboardOffsetLocal * outboardSign;
+    this._updateTireCenterlineCache();
+  }
+
+  /** Current wheel-mesh lateral offset, as last set via setWheelOffset. */
+  getWheelOffset(): number {
+    return this._wheelOffsetLocal;
+  }
+
+  /**
+   * True visual centerline X of the wheel in assembly-local space,
+   * derived from the wheel mesh's world bounding box each time the
+   * wheel is moved. Using the bbox center (rather than
+   * wheelMesh.position.x) is essential because the GLTF wheel mesh
+   * carries its own local pivot offset, scale flips applied during
+   * reparenting, and nested child transforms. Directly reading
+   * wheelMesh.position.x does not generally land on the tire's visual
+   * centerline. The scrub-radius indicator reads this value so the
+   * dashed tire centerline overlay always passes exactly through the
+   * middle of the visible tire.
+   */
+  getTireCenterlineX(): number {
+    return this._tireCenterlineXLocal;
+  }
+
+  /** Cached tire-centerline X in assembly-local, updated on every
+   *  setWheelOffset call (and once in the constructor). */
+  private _tireCenterlineXLocal = 0;
+
+  private _updateTireCenterlineCache(): void {
+    // Make sure world matrices are current so Box3.setFromObject reads
+    // correct positions. The scrub-radius indicator only uses this when
+    // the scrub fault is active, so paying for a world-matrix update
+    // here is acceptable.
+    this.assembly.updateMatrixWorld(true);
+    const bbox = new THREE.Box3().setFromObject(this.wheelMesh);
+    const worldCenter = new THREE.Vector3();
+    bbox.getCenter(worldCenter);
+    // Convert world center to assembly-local. worldToLocal mutates in
+    // place, so clone first.
+    const local = this.assembly.worldToLocal(worldCenter.clone());
+    this._tireCenterlineXLocal = local.x;
   }
 
   /**
