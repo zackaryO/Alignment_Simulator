@@ -3,7 +3,7 @@
    --------------------------------------------------------------------------
    - Single flex column container fills the viewport.
    - All chrome (tabs, info panel, steering, error rows, actions) is
-     flex-shrink: 0 — they take exactly the space they need.
+     flex-shrink: 0, they take exactly the space they need.
    - The 3D renderer is the ONLY flex-grow element, so it always inflates
      to fill the leftover space, no matter the screen size.
    - The info panel is INLINE (never absolute) so it never overlaps the
@@ -50,7 +50,7 @@
 .mode-tab:not(.active):hover { background: #495057; }
 
 /* ==========================================================================
-   Info panel — only used in error mode for the selected error description
+   Info panel, only used in error mode for the selected error description
    ========================================================================== */
 .info-panel {
   background: #212529;
@@ -104,7 +104,7 @@
 }
 
 /* ==========================================================================
-   Render area — wraps the renderer so the legend can be positioned
+   Render area, wraps the renderer so the legend can be positioned
    relative to it (top-right corner of the 3D view) without ever bleeding
    into other rows.
    ========================================================================== */
@@ -156,8 +156,38 @@
   background: transparent !important;
 }
 
+/* Tiny attribution footnote: absolute-positioned in the bottom-left
+   corner of the render area so it never steals layout space from the
+   3D view or the control rows. Muted colour, small type. */
+.attribution {
+  position: absolute;
+  left: 6px;
+  bottom: 4px;
+  z-index: 11;
+  font-size: 9px;
+  line-height: 1.2;
+  color: rgba(60, 60, 60, 0.75);
+  background: rgba(255, 255, 255, 0.55);
+  padding: 2px 6px;
+  border-radius: 3px;
+  pointer-events: auto;
+  max-width: 60%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attribution a {
+  color: rgba(20, 70, 160, 0.85);
+  text-decoration: none;
+}
+
+.attribution a:hover {
+  text-decoration: underline;
+}
+
 /* ==========================================================================
-   3D Renderer — fills its parent .render-area entirely
+   3D Renderer, fills its parent .render-area entirely
    ========================================================================== */
 .renderer-container {
   flex: 1 1 auto;
@@ -272,7 +302,7 @@ label {
 .diag-btn:hover { background-color: #5a32a3; }
 
 /* ==========================================================================
-   Error mode — compact button grid
+   Error mode, compact button grid
    ========================================================================== */
 .error-grid {
   display: flex;
@@ -305,7 +335,7 @@ label {
 .error-buttons {
   flex: 1;
   display: grid;
-  /* Auto-fit so 2 buttons stretch as wide as 3, etc. — always perfectly aligned. */
+  /* Auto-fit so 2 buttons stretch as wide as 3, etc., always perfectly aligned. */
   grid-template-columns: repeat(auto-fit, minmax(72px, 1fr));
   gap: 4px;
 }
@@ -430,6 +460,24 @@ label {
   border-color: #6f42c1;
 }
 
+/* Chart cells that would lead to a no-match combination are faded so
+   the user can see at a glance which selections still lead to a valid
+   diagnosis. Still clickable, in case the user wants to explore. The
+   active cell overrides this via the rule that follows. */
+.diag-rb.unavailable {
+  opacity: 0.3;
+  color: #999;
+  background: #f2f2f2;
+  border-color: #ddd;
+}
+
+.diag-rb.active.unavailable {
+  opacity: 1;
+  color: white;
+  background: #6f42c1;
+  border-color: #6f42c1;
+}
+
 .diag-table {
   width: 100%;
   border-collapse: separate;
@@ -481,7 +529,7 @@ label {
 .diag-actions button:hover { background: #5a6268; }
 
 /* ==========================================================================
-   DESKTOP / TABLET — make better use of width
+   DESKTOP / TABLET, make better use of width
    ========================================================================== */
 @media (min-width: 768px) {
   .info-panel { padding: 10px 16px; }
@@ -501,7 +549,7 @@ label {
   .reset-btn.compact { flex: 0 0 auto; width: auto; padding: 8px 16px; }
 
   /* On larger viewports the renderer is allowed to grow but never
-     forced to a min-height — the action row at the bottom always wins. */
+     forced to a min-height, the action row at the bottom always wins. */
   .legend { font-size: 11px; padding: 8px 12px; max-width: 30%; }
 
   .error-row-label { width: 70px; font-size: 12px; }

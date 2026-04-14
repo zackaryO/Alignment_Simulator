@@ -7,13 +7,13 @@
       Geometry
     </button>
     <button class="mode-tab" [class.active]="mode === 'error'" (click)="setMode('error')">
-      Errors
+      Faults
     </button>
   </div>
 
   <!-- ============================================================ -->
-  <!--   INFO PANEL — error description only.                       -->
-  <!--   Hidden entirely in geometry mode (no metrics — wasted space)-->
+  <!--   INFO PANEL, error description only.                       -->
+  <!--   Hidden entirely in geometry mode (no metrics, wasted space)-->
   <!--   In error mode shows the selected error's full description, -->
   <!--   or a placeholder prompt when nothing is selected.          -->
   <!-- ============================================================ -->
@@ -25,7 +25,7 @@
       <div class="detail-row"><span class="detail-label">Tire wear</span><span>{{ selectedError.tireWear }}</span></div>
     </div>
     <div class="error-detail placeholder" *ngIf="!selectedError">
-      Select an alignment error below to see how it affects driving and tire wear.
+      Select an alignment fault below to see how it affects driving and tire wear.
     </div>
   </div>
 
@@ -44,11 +44,27 @@
       <div class="legend-item"><span class="legend-swatch dashed"></span> Reference (zero geometry)</div>
       <div class="legend-item"><span class="legend-swatch" style="background:rgba(255,136,34,0.5);"></span> Caster/SAI Deviation</div>
       <div class="legend-item" *ngIf="mode === 'error' && selectedError">
-        <span class="legend-swatch dashed"></span> Ideal axis (error mode)
+        <span class="legend-swatch dashed"></span> Ideal axis (fault mode)
       </div>
       <div class="legend-item" *ngIf="mode === 'error' && selectedError">
         <span class="legend-swatch" style="background:rgba(255,80,80,0.4);"></span> Deviation from spec
       </div>
+    </div>
+    <!-- ========================================================== -->
+    <!-- Tiny attribution footnote. Kept small and out-of-flow in   -->
+    <!-- the bottom corner of the render area. Complies with the   -->
+    <!-- Sketchfab Free Standard license by naming the model,      -->
+    <!-- the author, linking to the model page, and linking to the -->
+    <!-- license terms. Credits the site builder as well.          -->
+    <!-- ========================================================== -->
+    <div class="attribution">
+      <a href="https://sketchfab.com/3d-models/500-followers-milestone-mercedes-benz-glc-lp-35837d361a084e1eb70f78a93f56177f"
+         target="_blank" rel="noopener">&quot;500 Followers milestone, Mercedes-Benz GLC (LP)&quot;</a>
+      by
+      <a href="https://sketchfab.com/KrStolorz" target="_blank" rel="noopener">KrStolorz</a>,
+      licensed under
+      <a href="https://sketchfab.com/licenses" target="_blank" rel="noopener">Sketchfab Free Standard</a>.
+      Site by Zack Otterstrom.
     </div>
   </div>
 
@@ -116,7 +132,7 @@
   <div class="modal-overlay" *ngIf="showDiagnostic" (click)="closeDiagnostic()">
     <div class="modal" (click)="$event.stopPropagation()">
       <div class="modal-header">
-        <h3>SAI Diagnostic Chart</h3>
+        <h3>Diagnostic Angle Chart</h3>
         <button class="modal-close" (click)="closeDiagnostic()">×</button>
       </div>
       <div class="modal-body">
@@ -136,21 +152,21 @@
             <tbody>
               <tr>
                 <td>SAI</td>
-                <td><button class="diag-rb" [class.active]="diagSAI === 'OK'" (click)="diagSAI = 'OK'; runDiagnostic()">OK</button></td>
-                <td><button class="diag-rb" [class.active]="diagSAI === 'Less'" (click)="diagSAI = 'Less'; runDiagnostic()">Less</button></td>
-                <td><button class="diag-rb" [class.active]="diagSAI === 'Greater'" (click)="diagSAI = 'Greater'; runDiagnostic()">Greater</button></td>
+                <td><button class="diag-rb" [class.active]="diagSAI === 'OK'" [class.unavailable]="isDiagOptionUnavailable('sai', 'OK')" (click)="pickDiag('sai', 'OK')">OK</button></td>
+                <td><button class="diag-rb" [class.active]="diagSAI === 'Less'" [class.unavailable]="isDiagOptionUnavailable('sai', 'Less')" (click)="pickDiag('sai', 'Less')">Less</button></td>
+                <td><button class="diag-rb" [class.active]="diagSAI === 'Greater'" [class.unavailable]="isDiagOptionUnavailable('sai', 'Greater')" (click)="pickDiag('sai', 'Greater')">Greater</button></td>
               </tr>
               <tr>
                 <td>Camber</td>
-                <td><button class="diag-rb" [class.active]="diagCamber === 'OK'" (click)="diagCamber = 'OK'; runDiagnostic()">OK</button></td>
-                <td><button class="diag-rb" [class.active]="diagCamber === 'Less'" (click)="diagCamber = 'Less'; runDiagnostic()">Less</button></td>
-                <td><button class="diag-rb" [class.active]="diagCamber === 'Greater'" (click)="diagCamber = 'Greater'; runDiagnostic()">Greater</button></td>
+                <td><button class="diag-rb" [class.active]="diagCamber === 'OK'" [class.unavailable]="isDiagOptionUnavailable('camber', 'OK')" (click)="pickDiag('camber', 'OK')">OK</button></td>
+                <td><button class="diag-rb" [class.active]="diagCamber === 'Less'" [class.unavailable]="isDiagOptionUnavailable('camber', 'Less')" (click)="pickDiag('camber', 'Less')">Less</button></td>
+                <td><button class="diag-rb" [class.active]="diagCamber === 'Greater'" [class.unavailable]="isDiagOptionUnavailable('camber', 'Greater')" (click)="pickDiag('camber', 'Greater')">Greater</button></td>
               </tr>
               <tr>
                 <td>Incl. Angle</td>
-                <td><button class="diag-rb" [class.active]="diagIA === 'OK'" (click)="diagIA = 'OK'; runDiagnostic()">OK</button></td>
-                <td><button class="diag-rb" [class.active]="diagIA === 'Less'" (click)="diagIA = 'Less'; runDiagnostic()">Less</button></td>
-                <td><button class="diag-rb" [class.active]="diagIA === 'Greater'" (click)="diagIA = 'Greater'; runDiagnostic()">Greater</button></td>
+                <td><button class="diag-rb" [class.active]="diagIA === 'OK'" [class.unavailable]="isDiagOptionUnavailable('ia', 'OK')" (click)="pickDiag('ia', 'OK')">OK</button></td>
+                <td><button class="diag-rb" [class.active]="diagIA === 'Less'" [class.unavailable]="isDiagOptionUnavailable('ia', 'Less')" (click)="pickDiag('ia', 'Less')">Less</button></td>
+                <td><button class="diag-rb" [class.active]="diagIA === 'Greater'" [class.unavailable]="isDiagOptionUnavailable('ia', 'Greater')" (click)="pickDiag('ia', 'Greater')">Greater</button></td>
               </tr>
             </tbody>
           </table>

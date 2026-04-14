@@ -6,15 +6,15 @@
  *
  * The textbook content (descriptions, driving effects, tire-wear patterns,
  * SAI/Camber/IA combinations) is sourced from Mercedes-Benz DRIVE Alignment
- * Certification EKP 10.21 — the same student curriculum used by the
+ * Certification EKP 10.21, the same student curriculum used by the
  * Mercedes-Benz technician training programs.
  *
  * Two pieces of data live here:
- *   1. {@link ERROR_DEFINITIONS} — every selectable scenario plus the
+ *   1. {@link ERROR_DEFINITIONS}, every selectable scenario plus the
  *      slider-state offsets the simulator should apply when the user picks
  *      it. The numbers in `state` are deliberately exaggerated so the
  *      visualization is unmistakable.
- *   2. {@link SLA_DIAGNOSTICS} / {@link MACPHERSON_DIAGNOSTICS} — lookup
+ *   2. {@link SLA_DIAGNOSTICS} / {@link MACPHERSON_DIAGNOSTICS}, lookup
  *      tables for the diagnostic chart modal. Given a suspension type and
  *      three TriState observations, {@link lookupDiagnostic} returns the
  *      most likely root cause.
@@ -39,7 +39,7 @@ export interface AlignmentErrorState {
 
 /** A single canned scenario that can be selected from the Errors-mode grid. */
 export interface AlignmentError {
-  /** Stable identifier — used as the active-button key in the UI. */
+  /** Stable identifier, used as the active-button key in the UI. */
   id: string;
   /** Which angle category this error belongs to (used for grouping in the UI). */
   angle: AngleCategory;
@@ -90,8 +90,8 @@ export const ERROR_DEFINITIONS: AlignmentError[] = [
     id: 'caster-low',
     angle: 'Caster',
     variant: 'Too Low',
-    description: 'Steering axis is tilted forward (or insufficiently rearward).',
-    drivingEffect: 'Poor steering self-centering — wheel does not return after a turn. Vehicle wanders and is prone to a slight drift. Susceptible to crosswinds, tire taper/conicity, and wheel wobble.',
+    description: 'Steering axis is tilted forward, or insufficiently rearward.',
+    drivingEffect: 'Weak self-returning action of the steering. The vehicle drifts, wanders, and reacts more strongly to crosswinds and to tire taper or wheel wobble.',
     tireWear: 'None directly, but the resulting drift can cause secondary wear.',
     state: { caster: 0 }
   },
@@ -100,7 +100,7 @@ export const ERROR_DEFINITIONS: AlignmentError[] = [
     angle: 'Caster',
     variant: 'Too High',
     description: 'Steering axis is tilted excessively rearward.',
-    drivingEffect: 'High steering and holding forces, especially at low speeds. Heavy on-center feel. Any side-to-side imbalance still produces a slight drift.',
+    drivingEffect: 'Steering feels weighty and effortful, particularly at low speed, with strong on-center resistance. Poor steering responsiveness.',
     tireWear: 'None directly.',
     state: { caster: 18 }
   },
@@ -120,8 +120,8 @@ export const ERROR_DEFINITIONS: AlignmentError[] = [
     angle: 'Toe',
     variant: 'Toe-In',
     description: 'Front of both wheels point toward centerline beyond spec.',
-    drivingEffect: 'Nervous, twitchy straight-ahead driving. Tires scrub. Toe does NOT cause a steady continuous pull — instead the vehicle reacts erratically with intermittent darting as one tire grabs more than the other.',
-    tireWear: 'Feathered edge on outside of tread (run hand from center outward — feels smooth out, sharp in).',
+    drivingEffect: 'Twitchy, restless straight-ahead behavior. Tires scrub. Toe does NOT cause a steady continuous pull. Instead the vehicle reacts erratically with intermittent darting as one tire grabs more than the other.',
+    tireWear: 'Feathered edge on outside of tread (run a hand from center outward; feels smooth on the way out and sharp on the way back).',
     state: { totalToe: 2.5 }
   },
   {
@@ -129,7 +129,7 @@ export const ERROR_DEFINITIONS: AlignmentError[] = [
     angle: 'Toe',
     variant: 'Toe-Out',
     description: 'Front of both wheels point away from centerline beyond spec.',
-    drivingEffect: 'Spongy / wandering handling. Vehicle darts on bumps. Toe does NOT cause a steady continuous pull — instead it produces an intermittent, erratic pull that changes direction as load and surface vary.',
+    drivingEffect: 'Loose, wandering handling. Vehicle darts on bumps. Toe does NOT cause a steady continuous pull. Instead it produces an intermittent, erratic pull that changes direction as load and surface vary.',
     tireWear: 'Feathered edge on inside of tread.',
     state: { totalToe: -2.5 }
   },
@@ -139,8 +139,8 @@ export const ERROR_DEFINITIONS: AlignmentError[] = [
     id: 'sai-low',
     angle: 'SAI',
     variant: 'Too Small',
-    description: 'Steering axis inclination is less than spec — generally indicates a bent strut, knuckle, or chassis damage.',
-    drivingEffect: 'Poor steering self-centering. Susceptibility to tire faults (taper, conicity). Can lead to pulling to one side.',
+    description: 'Steering axis inclination is less than spec. Usually indicates a bent strut, knuckle, or chassis damage.',
+    drivingEffect: 'Reduced self-center behavior, amplified reaction to tire conicity or taper, with a drift or pull often showing up on the road.',
     tireWear: 'None directly, but pull may cause secondary wear.',
     state: { sai: 5 }
   },
@@ -149,7 +149,7 @@ export const ERROR_DEFINITIONS: AlignmentError[] = [
     angle: 'SAI',
     variant: 'Too Large',
     description: 'Steering axis inclination exceeds spec.',
-    drivingEffect: 'High steering and holding forces.',
+    drivingEffect: 'Heavier steering input, and more force needed to hold a turn.',
     tireWear: 'None directly.',
     state: { sai: 19 }
   },
@@ -157,8 +157,8 @@ export const ERROR_DEFINITIONS: AlignmentError[] = [
     id: 'sai-uneven',
     angle: 'SAI',
     variant: 'Diff L/R',
-    description: 'SAI differs side-to-side — usually indicates bent suspension component or chassis damage.',
-    drivingEffect: 'Susceptible to pulling to one side. Torque steer. Brake pull. Bump steer. Pull toward the LESSER angle.',
+    description: 'SAI differs side-to-side. Usually indicates a bent suspension component or chassis damage.',
+    drivingEffect: 'The vehicle wants to pull to one side and also reacts through the steering wheel under throttle (torque reaction), under braking (brake pull), and over bumps (bump reaction). Pull is toward the smaller angle.',
     tireWear: 'None directly.',
     state: { sai: 13 }
   },
@@ -178,7 +178,7 @@ export const ERROR_DEFINITIONS: AlignmentError[] = [
     angle: 'ScrubRadius',
     variant: 'Negative',
     description: 'SAI line meets the road outboard of the tire centerline. Used with ABS for stability.',
-    drivingEffect: 'Steering automatically counter-steers during uneven braking — driver only lightly holds steering. Pulls toe outward when braking.',
+    drivingEffect: 'Steering automatically counter-steers during uneven braking, so the driver only lightly holds the wheel. Pulls toe outward when braking.',
     tireWear: 'None directly.',
     state: {}
   },
@@ -187,22 +187,22 @@ export const ERROR_DEFINITIONS: AlignmentError[] = [
     angle: 'ScrubRadius',
     variant: 'Zero',
     description: 'SAI line meets the road exactly at the tire centerline.',
-    drivingEffect: 'Prevents transfer of unequal forces during braking or with a defective tire. High steering forces at standstill.',
+    drivingEffect: 'Isolates the steering from uneven braking and tire faults, at the cost of a noticeably stiff wheel when the car is not rolling. Also reduces steering feedback, removing some of the driver\'s feel of the road.',
     tireWear: 'None directly.',
     state: {}
   }
 ];
 
 // ============================================================================
-// Diagnostic chart data — Mercedes DRIVE EKP 10.21 pages 56-57
+// Diagnostic chart data, Mercedes DRIVE EKP 10.21 pages 56-57
 //
-// The technician measures three things on the alignment rack — SAI, camber,
-// and Included Angle (camber + SAI) — and classifies each as OK, Less, or
+// The technician measures three things on the alignment rack, SAI, camber,
+// and Included Angle (camber + SAI), and classifies each as OK, Less, or
 // Greater than spec. The combination uniquely identifies a bent or
 // mis-positioned suspension component.
 // ============================================================================
 
-/** Front suspension type — drives which lookup table is used. */
+/** Front suspension type, drives which lookup table is used. */
 export type SuspensionType = 'SLA' | 'MacPherson';
 /** Three-way measurement classification: at spec, below spec, above spec. */
 export type TriState = 'OK' | 'Less' | 'Greater';
@@ -226,10 +226,10 @@ export const SLA_DIAGNOSTICS: DiagnosticEntry[] = [
 export const MACPHERSON_DIAGNOSTICS: DiagnosticEntry[] = [
   { sai: 'OK',      camber: 'Less',    ia: 'Less',    problem: 'Bent spindle or strut' },
   { sai: 'OK',      camber: 'Greater', ia: 'Greater', problem: 'Bent spindle or strut' },
-  { sai: 'Less',    camber: 'Greater', ia: 'OK',      problem: 'Bent control arm or strut tower out at top' },
-  { sai: 'Greater', camber: 'Greater', ia: 'Greater', problem: 'Bent strut or strut tower in at top' },
-  { sai: 'Less',    camber: 'Greater', ia: 'Greater', problem: 'Bent control arm, or strut tower out at top, or bent spindle and/or strut' },
-  { sai: 'Less',    camber: 'Less',    ia: 'Less',    problem: 'Strut tower in at top, and spindle or control arm or strut bent' },
+  { sai: 'Less',    camber: 'Greater', ia: 'OK',      problem: 'Bent control arm, or damaged strut tower' },
+  { sai: 'Greater', camber: 'Greater', ia: 'Greater', problem: 'Bent strut, or damaged strut tower' },
+  { sai: 'Less',    camber: 'Greater', ia: 'Greater', problem: 'Bent control arm, or damaged strut tower, or a bent spindle or strut (or both)' },
+  { sai: 'Less',    camber: 'Less',    ia: 'Less',    problem: 'Damaged strut tower, together with a bent spindle, control arm, or strut' },
 ];
 
 /**
@@ -237,7 +237,7 @@ export const MACPHERSON_DIAGNOSTICS: DiagnosticEntry[] = [
  * the EKP 10.21 chart.
  *
  * Returns the matching problem text if the combination appears in the
- * chart, or a polite "no match" message — many combinations are simply
+ * chart, or a polite "no match" message, many combinations are simply
  * within spec, so absence of a match is not necessarily an error.
  */
 export function lookupDiagnostic(
@@ -245,7 +245,7 @@ export function lookupDiagnostic(
 ): string {
   const table = type === 'SLA' ? SLA_DIAGNOSTICS : MACPHERSON_DIAGNOSTICS;
   const match = table.find(e => e.sai === sai && e.camber === camber && e.ia === ia);
-  return match ? match.problem : 'No matching problem in chart for this combination. The angles may be within spec, or the combination is unusual — verify measurements.';
+  return match ? match.problem : 'No matching problem in the chart for this combination. The angles may be within spec, or the combination is unusual. Verify measurements.';
 }
 
 /**

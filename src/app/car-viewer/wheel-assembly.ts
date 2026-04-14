@@ -13,7 +13,7 @@
  *      └── assembly        (THREE.Group, positioned at the wheel center)
  *           └── turnPivot     (rotates around the inclined steering axis)
  *                └── alignmentPivot  (applies camber and toe)
- *                     └── wheelMesh  (the actual GLTF wheel — keeps its
+ *                     └── wheelMesh  (the actual GLTF wheel, keeps its
  *                                      spin-axis X rotation, Y/Z stripped)
  *
  * Why three nested pivots instead of one?
@@ -41,7 +41,7 @@ export class WheelAssembly {
   /** Which side of the car this wheel sits on. */
   readonly side: 'left' | 'right';
 
-  /** Y position of the assembly at construction time — restore baseline for jacking. */
+  /** Y position of the assembly at construction time, restore baseline for jacking. */
   private _restY = 0;
   /** Current camber in degrees (raw input from the UI, not yet sign-corrected). */
   private _camberDeg = 0;
@@ -68,10 +68,10 @@ export class WheelAssembly {
    *      transform so its world transform is preserved through the move.
    *
    *   3. Strip the residual Y/Z rotations the GLTF artist baked into the
-   *      wheel mesh — those would otherwise stack on top of every alignment
+   *      wheel mesh, those would otherwise stack on top of every alignment
    *      angle we apply later. The X rotation (spin axis) is kept. If the
    *      mesh comes through with a >90° Z rotation, that's the
-   *      mathematically-equivalent representation of a mirror — we replace
+   *      mathematically-equivalent representation of a mirror, we replace
    *      it with a negative scale so the visual mirroring is preserved
    *      without polluting the rotation channels.
    */
@@ -108,9 +108,9 @@ export class WheelAssembly {
     this.wheelMesh = wheel;
 
     // The wheel mesh now has a local rotation that includes:
-    //   X rotation: the wheel's spin axis orientation — KEEP THIS
-    //   Y rotation: residual toe from the model — REMOVE THIS
-    //   Z rotation: residual camber from the model — REMOVE THIS
+    //   X rotation: the wheel's spin axis orientation, KEEP THIS
+    //   Y rotation: residual toe from the model, REMOVE THIS
+    //   Z rotation: residual camber from the model, REMOVE THIS
     // If Z rotation > 90°, the wheel is mirrored (negative X scale from the
     // GLTF parent chain was absorbed into rotation by attach()). Restore the
     // mirror as a negative X scale instead, which keeps the wheel facing
@@ -130,7 +130,7 @@ export class WheelAssembly {
     // Strip residual toe (Y) and camber (Z), keep only spin axis (X)
     wheel.rotation.set(euler.x, 0, 0, euler.order);
 
-    console.log(`[${side}] stripped Y=${THREE.MathUtils.radToDeg(euler.y).toFixed(1)}° Z=${THREE.MathUtils.radToDeg(euler.z).toFixed(1)}° — kept X=${THREE.MathUtils.radToDeg(euler.x).toFixed(1)}°`);
+    console.log(`[${side}] stripped Y=${THREE.MathUtils.radToDeg(euler.y).toFixed(1)}° Z=${THREE.MathUtils.radToDeg(euler.z).toFixed(1)}°, kept X=${THREE.MathUtils.radToDeg(euler.x).toFixed(1)}°`);
   }
 
   /** Set caster angle (degrees). Recomputes the steering-axis quaternion. */
@@ -165,7 +165,7 @@ export class WheelAssembly {
 
   /**
    * Apply vertical jacking displacement (in world units) to the assembly.
-   * Used for the SAI jacking effect — when the steering axis is inclined,
+   * Used for the SAI jacking effect, when the steering axis is inclined,
    * turning the wheel causes the wheel center to want to move vertically.
    * Positive lift = the assembly moves up (vehicle rises).
    */
@@ -180,9 +180,9 @@ export class WheelAssembly {
    *   - The spindle axis (reference line) traces an arc around the inclined
    *     steering axis as the wheel turns.
    *   - When the spindle "presses down" (geometric Y negative), the suspension
-   *     EXTENDS on that side — the body corner RISES.
+   *     EXTENDS on that side, the body corner RISES.
    *   - When the spindle "lifts up" (geometric Y positive), the suspension
-   *     COMPRESSES — the body corner DROPS.
+   *     COMPRESSES, the body corner DROPS.
    *   - BOTH wheels remain in contact with the road; only the body moves.
    *   - The springs absorb part of the geometric motion, so only a fraction
    *     becomes visible body movement.
@@ -226,9 +226,9 @@ export class WheelAssembly {
    * in the visualization.
    *
    * Axis components (assembly-local space):
-   *   X = sin(SAI)·side    — lean of the axis toward/away from the car
+   *   X = sin(SAI)·side   , lean of the axis toward/away from the car
    *   Y = cos(caster)·cos(SAI)
-   *   Z = -sin(caster)     — caster tilts the top of the axis rearward
+   *   Z = -sin(caster)    , caster tilts the top of the axis rearward
    *
    * The `saiSign` flips the X component for the left wheel so SAI always
    * leans the *top* of the steering axis toward the car centerline,
@@ -258,7 +258,7 @@ export class WheelAssembly {
    * Apply camber and toe directly to the alignment pivot.
    *
    * No baseline subtraction is needed because the constructor already
-   * stripped the residual Y/Z rotation from the wheel mesh — at this point
+   * stripped the residual Y/Z rotation from the wheel mesh, at this point
    * the alignment pivot has a clean identity orientation that represents
    * "wheel pointing dead ahead with zero camber".
    *
@@ -302,8 +302,8 @@ export class WheelAssembly {
 
   /**
    * Read the wheel's *effective* toe after steering. Same approach as
-   * {@link getEffectiveCamber} — relative quaternion between assembly and
-   * alignment pivot, decomposed to XYZ Euler — but reads the Y component.
+   * {@link getEffectiveCamber}, relative quaternion between assembly and
+   * alignment pivot, decomposed to XYZ Euler, but reads the Y component.
    */
   getEffectiveToe(): number {
     this.assembly.updateMatrixWorld(true);
